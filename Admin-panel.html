@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SkillTester secure exam administration panel.">
+  <title>SkillTester Admin Panel</title>
+  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="Admin-panel.css?v=17">
+</head>
+<body class="admin-page-body">
+  <main class="admin-page">
+    <section id="adminLoginCard" class="admin-login-card">
+      <div class="admin-page-brand">
+        <span class="admin-brand-mark">&lt;/&gt;</span>
+        <div>
+          <p class="eyebrow">Owner controls</p>
+          <h1>Admin Control Center</h1>
+        </div>
+      </div>
+      <p class="admin-intro">Sign in to manage student lifetime credentials, one-time codes, live surveillance radar, and forensic exam audits.</p>
+      <form id="adminLoginForm" class="form-grid">
+        <div class="field">
+          <label for="adminCodeInput">Admin password</label>
+          <input id="adminCodeInput" type="password" autocomplete="current-password" placeholder="Enter admin password" required>
+        </div>
+        <p id="adminError" class="form-error" role="alert"></p>
+        <button id="adminLoginButton" class="primary-btn" type="submit">Unlock Command Center</button>
+      </form>
+    </section>
+
+    <section id="adminDashboard" class="admin-dashboard hidden">
+      <header class="admin-dashboard-header">
+        <div class="admin-page-brand">
+          <span class="admin-brand-mark">&lt;/&gt;</span>
+          <div>
+            <p class="eyebrow">Live Proctored Administration</p>
+            <h1>SkillTester Command Center</h1>
+          </div>
+        </div>
+        <div class="admin-header-actions">
+          <span id="liveConnection" class="live-connection"><i></i> Connecting to live data</span>
+          <button id="adminLogout" class="secondary-btn" type="button">Lock panel</button>
+        </div>
+      </header>
+
+      <!-- VVIP Summary Analytics Cards -->
+      <section class="admin-summary" aria-label="Portal status">
+        <article class="admin-stat-card">
+          <span class="stat-label">Portal Security</span>
+          <strong id="adminStatus" class="stat-value">Loading</strong>
+        </article>
+        <article class="admin-stat-card">
+          <span class="stat-label">Permanent Lifetime IDs</span>
+          <strong id="permanentStat" class="stat-value">0 Active</strong>
+        </article>
+        <article class="admin-stat-card">
+          <span class="stat-label">One-Time Codes</span>
+          <strong id="unusedCodes" class="stat-value">0 Available</strong>
+        </article>
+        <article class="admin-stat-card">
+          <span class="stat-label">Completed Exams</span>
+          <strong id="resultCount" class="stat-value">0</strong>
+        </article>
+      </section>
+
+      <!-- 🔥 VVIP FEATURE 1: LIVE ACTIVE EXAM RADAR -->
+      <section id="liveRadarSection" class="admin-section live-radar-section">
+        <div class="admin-section-heading">
+          <div>
+            <p class="eyebrow">Real-Time Exam Arena Surveillance</p>
+            <h2>Live Active Candidates Radar</h2>
+          </div>
+          <span class="radar-pulse-badge"><span class="radar-dot"></span> Live Telemetry Active</span>
+        </div>
+        <p class="admin-section-copy" style="margin-bottom:12px;">
+          Yeh radar un tamam candidates ko live track karta hai jo is waqt exam attempt kar rahe hain. Aap live progress (Question &amp; Time) dekh sakte hain, <strong>Live Push Warning</strong> bhej sakte hain, ya remote <strong>Terminate</strong> kar sakte hain.
+        </p>
+        <div id="liveRadarContainer" class="radar-container">
+          <p class="modal-copy" style="margin:0;">No candidate is currently active in the exam arena.</p>
+        </div>
+      </section>
+
+      <!-- Navigation Tabs -->
+      <nav class="admin-subnav" aria-label="Admin panels">
+        <button id="navPermanentTab" class="subnav-btn active" type="button">Permanent Lifetime IDs</button>
+        <button id="navOneTimeTab" class="subnav-btn" type="button">One-Time Codes</button>
+        <button id="navResultsTab" class="subnav-btn" type="button">Exam Results &amp; Analytics</button>
+      </nav>
+
+      <!-- 1. PERMANENT LIFETIME ID SECTION -->
+      <div id="permanentSectionWrap" class="admin-tab-content">
+        <section class="admin-section admin-issue-section">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow">Lifetime Candidate Access</p>
+              <h2>Create Permanent Student ID (Form 2)</h2>
+            </div>
+            <span class="admin-section-icon" aria-hidden="true">★</span>
+          </div>
+          <p class="admin-section-copy">
+            Permanent ID banayein. Sab students ke liye ek hi <strong>Unlimited Lifetime Access Password: <code>999990</code></strong> rahega. Har student ki ID <strong>unique / mukhtalif</strong> honi chahiye.
+          </p>
+
+          <div class="universal-pass-callout">
+            <div class="callout-icon">🔑</div>
+            <div class="callout-content">
+              <span class="callout-title">Universal Lifetime Access Password:</span>
+              <strong class="callout-code">999990</strong>
+              <p class="callout-text">Yeh ek hi lifetime code hai jo kabhi expire nahi hota. Har student ke liye yahi universal password (999990) kaam karega. Duplicate ID allow nahi hai.</p>
+            </div>
+            <button id="fillUniversalPassBtn" class="callout-action-btn" type="button">Fill 999990</button>
+          </div>
+
+          <form id="permanentStudentForm" class="admin-entry-form">
+            <div class="field">
+              <label for="permStudentId">Permanent Student ID (Unique)</label>
+              <input id="permStudentId" type="text" maxlength="30" autocomplete="off" placeholder="e.g. ST-1003 or PERM-101" required>
+              <small>Har student ki ID alag honi chahiye (Duplicate reject ho jayegi)</small>
+            </div>
+            <div class="field">
+              <label for="permStudentName">Student Name</label>
+              <input id="permStudentName" type="text" maxlength="30" pattern="[A-Za-z ]{2,30}" placeholder="Full student name" required>
+            </div>
+            <div class="field">
+              <label for="permFatherName">Father Name</label>
+              <input id="permFatherName" type="text" maxlength="30" pattern="[A-Za-z ]{2,30}" placeholder="Father name" required>
+            </div>
+            <div class="field">
+              <label for="permPhone">Mobile Number (Pakistani)</label>
+              <input id="permPhone" type="tel" inputmode="numeric" pattern="03[0-9]{9}" maxlength="11" placeholder="03xxxxxxxxx" required>
+            </div>
+            <div class="field">
+              <label for="permExam">Assigned Exam</label>
+              <select id="permExam" required>
+                <option value="All Subjects">All Subjects (HTML + CSS + JavaScript)</option>
+                <option value="HTML">HTML</option>
+                <option value="CSS">CSS</option>
+                <option value="JavaScript">JavaScript</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="permPassword">Lifetime Access Password (Fixed 999990)</label>
+              <div class="input-with-action">
+                <input id="permPassword" type="text" value="999990" maxlength="15" readonly required>
+                <button id="resetPermPassBtn" class="field-inline-btn" type="button">999990</button>
+              </div>
+            </div>
+            <p id="permError" class="form-error" role="alert"></p>
+            <div class="admin-entry-actions">
+              <div class="admin-entry-buttons">
+                <button id="createPermButton" class="primary-btn" type="submit">Create Permanent ID</button>
+                <button id="clearPermButton" class="secondary-btn" type="button">Reset Form</button>
+              </div>
+              <p id="createdPermNotice" class="created-code-notice" role="status"></p>
+            </div>
+          </form>
+        </section>
+
+        <section class="admin-section">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow">Active &amp; Blocked List</p>
+              <h2>Permanent Student Management</h2>
+            </div>
+            <input id="permSearch" type="search" placeholder="Search by ID, Name or Phone..." class="table-search">
+          </div>
+          <p class="admin-section-copy">
+            Kisi bhi student ko kisi bhi waqt <strong>Block ID</strong> ya <strong>Unblock ID</strong> kar sakte hain. Block hone par candidate ka exam foran rok diya jayega.
+          </p>
+          <div id="permanentList" class="admin-list"></div>
+        </section>
+      </div>
+
+      <!-- 2. ONE-TIME CODES SECTION -->
+      <div id="oneTimeSectionWrap" class="admin-tab-content hidden">
+        <section class="admin-section admin-issue-section">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow">Single-Use Admission</p>
+              <h2>One-Time Passcode Entry (Form 1)</h2>
+            </div>
+            <span class="admin-section-icon" aria-hidden="true">✦</span>
+          </div>
+          <form id="studentEntryForm" class="admin-entry-form">
+            <div class="field"><label for="entryStudentId">Student ID</label><input id="entryStudentId" type="text" maxlength="30" required></div>
+            <div class="field"><label for="entryStudentName">Student name</label><input id="entryStudentName" type="text" maxlength="30" required></div>
+            <div class="field"><label for="entryFatherName">Father name</label><input id="entryFatherName" type="text" maxlength="30" required></div>
+            <div class="field"><label for="entryPhone">Mobile number</label><input id="entryPhone" type="tel" maxlength="11" required></div>
+            <div class="field">
+              <label for="entryExam">Assigned exam</label>
+              <select id="entryExam" required>
+                <option value="All Subjects">All Subjects (HTML + CSS + JavaScript)</option>
+                <option value="HTML">HTML</option>
+                <option value="CSS">CSS</option>
+                <option value="JavaScript">JavaScript</option>
+              </select>
+            </div>
+            <div class="field"><label for="entryPasscode">One-time code (optional)</label><input id="entryPasscode" type="password" maxlength="6"></div>
+            <p id="entryError" class="form-error" role="alert"></p>
+            <div class="admin-entry-actions">
+              <div class="admin-entry-buttons">
+                <button id="createEntryButton" class="secondary-btn" type="submit">Save Student Entry</button>
+                <button id="generateEntryCodeButton" class="primary-btn" type="button">Generate One-Time Code</button>
+              </div>
+              <p id="createdCodeNotice" class="created-code-notice" role="status"></p>
+            </div>
+          </form>
+        </section>
+
+        <section class="admin-section">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow">Single-use credentials</p>
+              <h2>Student exam codes</h2>
+            </div>
+            <button id="toggleAdmin" class="secondary-btn" type="button">Disable Exam Access</button>
+          </div>
+          <div id="passcodeList" class="admin-list"></div>
+        </section>
+      </div>
+
+      <!-- 3. RESULTS & FORENSIC AUDIT TAB -->
+      <div id="resultsSectionWrap" class="admin-tab-content hidden">
+        <!-- VVIP Results KPI Performance Cards -->
+        <div class="results-kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Average Score</span>
+            <strong id="kpiAvgScore" class="kpi-value">—</strong>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Pass Rate</span>
+            <strong id="kpiPassRate" class="kpi-value">—</strong>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Top Performer</span>
+            <strong id="kpiTopScorer" class="kpi-value">—</strong>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Total Submissions</span>
+            <strong id="kpiTotalResults" class="kpi-value">0</strong>
+          </div>
+        </div>
+
+        <section class="admin-section">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow">Firebase Live Archive</p>
+              <h2>Verified Exam Results &amp; Answer Sheets</h2>
+            </div>
+            <div class="results-toolbar-actions">
+              <input id="resultSearch" type="search" placeholder="Search result by name or ID..." class="table-search">
+              <!-- 🔥 VVIP FEATURE: EXPORT TO CSV / EXCEL -->
+              <button id="exportCsvBtn" class="primary-btn export-btn" type="button">
+                📥 Export CSV / Excel
+              </button>
+            </div>
+          </div>
+          <p class="admin-section-copy">
+            Har candidate ke exam result par <strong>"🔍 Inspect Answer Sheet &amp; Audit Report"</strong> click karke candidate ka question-by-question paper aur security report dekh sakte hain.
+          </p>
+          <div id="resultList" class="admin-list"></div>
+        </section>
+      </div>
+
+      <p id="adminNotice" class="admin-notice" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- 🔥 VVIP FEATURE: CANDIDATE DETAILED AUDIT & ANSWER SHEET MODAL -->
+    <div id="auditModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auditModalTitle">
+      <div class="audit-modal-content">
+        <header class="audit-modal-header">
+          <div>
+            <span class="eyebrow">Forensic Examination Report</span>
+            <h2 id="auditModalTitle">Candidate Answer Sheet &amp; Audit Log</h2>
+          </div>
+          <button id="closeAuditModalBtn" class="icon-close" type="button" aria-label="Close modal">×</button>
+        </header>
+
+        <div id="auditModalBody" class="audit-modal-body">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <footer class="audit-modal-footer">
+          <button id="printAuditReportBtn" class="primary-btn" type="button">🖨️ Print Audit Sheet</button>
+          <button id="dismissAuditModalBtn" class="secondary-btn" type="button">Close</button>
+        </footer>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="Admin-panel.js?v=17"></script>
+</body>
+</html>

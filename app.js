@@ -12,40 +12,28 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-const EXAM_MINUTES = 30;
 const EXAM_TOTAL_MARKS = 100;
 const PASSING_SCORE = 50;
-const LOCKOUT_MS = 30 * 60 * 1000;
-const LOCK_KEY = "skilltester_lockout";
-const DEFAULT_ADMIN_PASSWORD = "03262116352#";
-let adminSession = false;
-
-function openAdminPanel() {
-  $("adminModal").classList.add("open");
-  $("adminCodeInput").focus();
-}
-
 const SESSION_KEY = "skilltester_session";
-const normalEmojis = ["👍", "❤️", "🔥", "🎉", "💡"];
+const UNIVERSAL_LIFETIME_PASSWORD = "999990";
+localStorage.removeItem("skilltester_lockout");
 
 const state = {
   candidate: null,
-  questions: [],
-  questionIndex: 0,
+  exam: "All Subjects",
   score: 0,
-  secondsLeft: EXAM_MINUTES * 60,
-  timerId: null,
+  questionCount: 0,
+  answerReview: [],
   examActive: false,
-  answerLocked: false,
-  selectedEmoji: "",
   antiCheatBound: false,
-  finishing: false
+  finishing: false,
+  liveBlockListener: null
 };
 let audioContext = null;
 
 const $ = (id) => document.getElementById(id);
-const show = (id) => $(id).classList.add("active");
-const hide = (id) => $(id).classList.remove("active");
+const show = (id) => $(id)?.classList.add("active");
+const hide = (id) => $(id)?.classList.remove("active");
 
 function playSound(kind) {
   try {
@@ -62,11 +50,12 @@ function playSound(kind) {
     gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
     oscillator.connect(gain).connect(audioContext.destination);
     oscillator.start(); oscillator.stop(audioContext.currentTime + duration + 0.02);
-  } catch (error) { /* Sound is progressive enhancement; exam flow remains usable. */ }
+  } catch (error) { /* Sound progressive enhancement */ }
 }
 
 function toast(message, tone = "info") {
   const node = $("toast");
+  if (!node) return;
   node.textContent = message;
   node.dataset.tone = tone;
   node.classList.remove("hidden");
@@ -74,64 +63,110 @@ function toast(message, tone = "info") {
   toast.timeout = window.setTimeout(() => node.classList.add("hidden"), 4500);
 }
 
-function getLockout() {
-  const lockedUntil = Number(localStorage.getItem(LOCK_KEY) || 0);
-  if (lockedUntil > Date.now()) return lockedUntil;
-  localStorage.removeItem(LOCK_KEY);
-  return 0;
+function calculateMarks(correctAnswers, questionCount = state.questionCount) {
+  if (!Number.isInteger(questionCount) || questionCount < 1) return 0;
+  return Math.round((correctAnswers / questionCount) * EXAM_TOTAL_MARKS);
 }
 
-function setLockout(reason) {
-  const lockedUntil = Date.now() + LOCKOUT_MS;
-  localStorage.setItem(LOCK_KEY, String(lockedUntil));
-  database.ref(`examLockouts/${state.candidate?.phone || "anonymous"}`).set({ lockedUntil, reason, createdAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => undefined);
-}
-
-function formatTime(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
-
-function calculateMarks(correctAnswers) {
-  return Math.round((correctAnswers / state.questions.length) * EXAM_TOTAL_MARKS);
+function renderAnswerReview(answerReview) {
+  const section = $("answerReview");
+  const list = $("answerReviewList");
+  if (!section || !list) return;
+  list.replaceChildren();
+  if (!Array.isArray(answerReview) || answerReview.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+  answerReview.forEach((item, index) => {
+    const card = document.createElement("article");
+    card.className = "answer-review-item";
+    const heading = document.createElement("h4");
+    heading.textContent = `Question ${index + 1} · ${item.subject}`;
+    const question = document.createElement("p");
+    question.className = "answer-review-question";
+    question.textContent = item.question;
+    const selected = document.createElement("p");
+    selected.className = item.selectedAnswer === item.correctAnswer
+      ? "answer-review-value answer-review-correct"
+      : "answer-review-value answer-review-incorrect";
+    const selectedLabel = document.createElement("strong");
+    selectedLabel.textContent = "Your answer: ";
+    selected.append(selectedLabel, document.createTextNode(item.selectedAnswer || "Not answered"));
+    const correct = document.createElement("p");
+    correct.className = "answer-review-value answer-review-correct";
+    const correctLabel = document.createElement("strong");
+    correctLabel.textContent = "Correct answer: ";
+    correct.append(correctLabel, document.createTextNode(item.correctAnswer));
+    card.append(heading, question, selected, correct);
+    list.appendChild(card);
+  });
+  section.classList.remove("hidden");
 }
 
 function isMobileDevice() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
+// -------------------------------------------------------------
+// STRICT SECURITY: KEYBOARD COMPLETE LOCK & ONLY MOUSE LEFT CLICK
+// -------------------------------------------------------------
 function bindSecurityDefaults() {
-  document.addEventListener("contextmenu", (event) => event.preventDefault());
-  document.addEventListener("selectstart", (event) => {
-    if (!event.target.matches("input, textarea")) event.preventDefault();
-  });
-  document.addEventListener("dragstart", (event) => event.preventDefault());
-  document.addEventListener("keydown", (event) => {
-    const blocked = event.key === "F12" || event.key === "Escape" || event.key === "Tab" ||
-      (event.ctrlKey && ["c", "v", "u", "s", "p"].includes(event.key.toLowerCase())) ||
-      (event.metaKey && ["c", "v", "u", "s", "p"].includes(event.key.toLowerCase()));
-    if (blocked && state.examActive) {
+  // Prevent contextmenu right-click anytime during exam
+  document.addEventListener("contextmenu", (event) => {
+    if (state.examActive) {
       event.preventDefault();
-      if (event.key === "Escape") terminateExam("Fullscreen was exited.");
+      event.stopPropagation();
+      return false;
+    }
+  }, true);
+
+  // Prevent text selection during exam
+  document.addEventListener("selectstart", (event) => {
+    if (state.examActive && !event.target.matches("input, textarea")) {
+      event.preventDefault();
     }
   });
+
+  document.addEventListener("dragstart", (event) => {
+    if (state.examActive) event.preventDefault();
+  });
+
+  // 🔥 KEYBOARD LOCK: When exam is active, ALL keys and shortcuts are blocked!
+  const blockKeys = (event) => {
+    if (state.examActive) {
+      event.preventDefault();
+      event.stopPropagation();
+      return false;
+    }
+  };
+  window.addEventListener("keydown", blockKeys, true);
+  window.addEventListener("keypress", blockKeys, true);
+  window.addEventListener("keyup", blockKeys, true);
+
+  // 🔥 MOUSE LOCK: ONLY Mouse Left Click (button === 0) is allowed!
+  const blockOtherMouse = (event) => {
+    if (state.examActive && event.button !== 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      return false;
+    }
+  };
+  window.addEventListener("mousedown", blockOtherMouse, true);
+  window.addEventListener("mouseup", blockOtherMouse, true);
+  window.addEventListener("auxclick", blockOtherMouse, true);
 }
 
 function bindAntiCheat() {
   if (state.antiCheatBound) return;
   state.antiCheatBound = true;
   document.addEventListener("visibilitychange", () => {
-    if (state.examActive && document.hidden) terminateExam("Browser tab or window focus changed.");
-  });
-  window.addEventListener("blur", () => {
-    if (state.examActive) terminateExam("Browser window lost focus.");
+    if (state.examActive && document.hidden) terminateActiveExam("Browser tab or window focus changed.");
   });
   window.addEventListener("pagehide", () => {
-    if (state.examActive) terminateExam("The exam page was hidden or closed.");
+    if (state.examActive) terminateActiveExam("The exam page was hidden or closed.");
   });
   document.addEventListener("fullscreenchange", () => {
-    if (state.examActive && !document.fullscreenElement && !isMobileDevice()) terminateExam("Fullscreen mode was exited.");
+    if (state.examActive && !document.fullscreenElement) terminateActiveExam("Fullscreen mode was exited.");
   });
   if (isMobileDevice()) {
     document.addEventListener("touchmove", (event) => {
@@ -141,89 +176,13 @@ function bindAntiCheat() {
 }
 
 async function requestExamFullscreen() {
-  if (!isMobileDevice() && document.documentElement.requestFullscreen) {
-    try { await document.documentElement.requestFullscreen(); }
-    catch (error) { throw new Error("Fullscreen permission is required before the exam can start."); }
+  if (document.fullscreenElement) return;
+  if (!document.documentElement.requestFullscreen) {
+    throw new Error("This browser does not support secure fullscreen exams. Please use an up-to-date desktop browser.");
   }
-}
-
-function buildQuestionBank() {
-  const html = [
-    ["Sab se bari heading ke liye kaunsa element hota hai?", ["<h6>", "<heading>", "<h1>", "<head>"], 2],
-    ["Image ke alternative text ke liye kaunsa attribute hota hai?", ["title", "alt", "src", "label"], 1],
-    ["Hyperlink banane ke liye kaunsa element hota hai?", ["<link>", "<a>", "<href>", "<url>"], 1],
-    ["Site navigation ke liye semantic element kaunsa hai?", ["<navigate>", "<menu>", "<nav>", "<links>"], 2],
-    ["Email address ke liye behtareen input type kaunsa hai?", ["mail", "email", "text-email", "address"], 1],
-    ["Video embed karne ke liye kaunsa element hota hai?", ["<media>", "<movie>", "<video>", "<play>"], 2],
-    ["<!DOCTYPE html> kya declare karta hai?", ["CSS file", "HTML version aur mode", "JavaScript function", "Browser plugin"], 1],
-    ["Table ki row ko represent karne wala element kaunsa hai?", ["<td>", "<th>", "<tr>", "<row>"], 2],
-    ["Metadata kis tag ke andar hota hai?", ["<body>", "<meta>", "<head>", "<data>"], 2],
-    ["Form control ko lazmi banane ke liye kaunsa attribute hota hai?", ["needed", "validate", "required", "must"], 2],
-    ["Ordered list ke liye kaunsa element hota hai?", ["<ul>", "<ol>", "<list>", "<li>"], 1],
-    ["Self-contained article ke liye kaunsa element hota hai?", ["<section>", "<article>", "<aside>", "<content>"], 1],
-    ["Line break lagane ke liye kaunsa tag hota hai?", ["<break>", "<lb>", "<br>", "<newline>"], 2],
-    ["Element ki unique ID set karne ke liye kaunsa attribute hota hai?", ["class", "id", "name", "key"], 1],
-    ["Figure ke caption ke liye kaunsa element hota hai?", ["<caption>", "<figcaption>", "<figuretext>", "<legend>"], 1],
-    ["Document ya section ka footer define karne wala tag kaunsa hai?", ["<bottom>", "<footer>", "<end>", "<section-footer>"], 1],
-    ["Short inline quotation ke liye kaunsa element hota hai?", ["<quote>", "<q>", "<cite>", "<blockquote>"], 1],
-    ["Link ko naye browsing context mein kholne ke liye kya use hota hai?", ["new", "target=\"_blank\"", "window=\"new\"", "open"], 1],
-    ["Form control ke saath label connect karne wala element kaunsa hai?", ["<label>", "<formlabel>", "<caption>", "<field>"], 0],
-    ["JavaScript ke saath graphics draw karne wala element kaunsa hai?", ["<draw>", "<canvas>", "<svg-js>", "<paint>"], 1]
-  ].map(([question, options, answer]) => ({ subject: "HTML", question, options, answer }));
-  const css = [
-    ["Text ka color change karne wali property kaunsi hai?", ["font-color", "color", "text-color", "foreground"], 1],
-    ["Flex formatting context banane wala display mode kaunsa hai?", ["display: flex", "position: flex", "layout: flex", "flex: display"], 0],
-    ["Root font size ke relative kaunsi unit hoti hai?", ["em", "rem", "%", "vh"], 1],
-    ["Element ke andar spacing control karne wali property kaunsi hai?", ["margin", "padding", "gap", "inset"], 1],
-    ["Corners ko round karne wali property kaunsi hai?", ["corner-radius", "border-radius", "round", "radius"], 1],
-    ["card naam ki class ko target karne wala selector kaunsa hai?", ["#card", ".card", "card", "*card"], 1],
-    ["Stacking order change karne wali property kaunsi hai?", ["layer", "stack", "z-index", "order-index"], 2],
-    ["Space rakhtay hue element ko invisible karne wali property kaunsi hai?", ["display: none", "visibility: hidden", "opacity: 0 and remove", "hidden: true"], 1],
-    ["Reusable custom property value ke liye kaunsa CSS function hota hai?", ["var()", "custom()", "value()", "prop()"], 0],
-    ["Grid columns control karne wali property kaunsi hai?", ["grid-template-columns", "grid-columns", "columns-grid", "template-columns"], 0],
-    ["box-sizing: border-box kya karta hai?", ["Borders do baar add karta hai", "Padding aur border ko declared size mein include karta hai", "Box shadow remove karta hai", "Square force karta hai"], 1],
-    ["Pointer element par hone par style karne wali pseudo-class kaunsi hai?", ["::pointer", ":hover", ":over", "@hover"], 1],
-    ["Image ko background banane wali property kaunsi hai?", ["image-background", "background-image", "src-background", "background-src"], 1],
-    ["Position ko viewport ke relative banane wali value kaunsi hai?", ["relative", "fixed", "absolute", "sticky"], 1],
-    ["Line spacing set karne wali property kaunsi hai?", ["line-height", "text-spacing", "leading", "line-spacing"], 0],
-    ["Responsive conditions define karne wali at-rule kaunsi hai?", ["@responsive", "@media", "@screen", "@breakpoint"], 1],
-    ["Flex items ki direction control karne wali property kaunsi hai?", ["flex-flow-direction", "flex-direction", "direction-flex", "item-direction"], 1],
-    ["Overflow content hide karne wali value kaunsi hai?", ["overflow: hidden", "clip: all", "content: hide", "hide-overflow: true"], 0],
-    ["Transparency control karne wali property kaunsi hai?", ["alpha", "opacity", "transparency", "visible"], 1],
-    ["Har element ko target karne wala selector kaunsa hai?", ["all", "#", ".", "*"], 3]
-  ].map(([question, options, answer]) => ({ subject: "CSS", question, options, answer }));
-  const javascript = [
-    ["Block-scoped variable declare karne wala keyword kaunsa hai?", ["var", "let", "define", "value"], 1],
-    ["JSON text ko object mein convert karne wala method kaunsa hai?", ["JSON.parse", "JSON.stringify", "JSON.object", "parse.JSON"], 0],
-    ["Value aur type dono check karne wala operator kaunsa hai?", ["==", "=", "===", "equals"], 2],
-    ["Array ke end mein item add karne wala method kaunsa hai?", ["push", "append", "addEnd", "insert"], 0],
-    ["DOM ka full form kya hai?", ["Document Object Model", "Data Object Map", "Display Order Method", "Document Oriented Markup"], 0],
-    ["Button activate hone par kaunsa event fire hota hai?", ["press", "activate", "click", "tap-only"], 2],
-    ["Function define karne wala keyword kaunsa hai?", ["method", "function", "def", "procedure"], 1],
-    ["Intentional empty value ko represent karne wali value kaunsi hai?", ["undefined", "null", "empty", "void-value"], 1],
-    ["Pehla matching element select karne wala method kaunsa hai?", ["querySelector", "getFirst", "selectOne", "findElement"], 0],
-    ["Template literal banane ke liye kaunsi syntax use hoti hai?", ["Single quotes", "Double quotes", "Backticks", "Parentheses"], 2],
-    ["Promise rejection handle karne wala method kaunsa hai?", [".catch", ".error", ".reject", ".fail"], 0],
-    ["Iterable values par direct loop karne wala loop kaunsa hai?", ["for...in", "for...of", "forEach-only", "repeat"], 1],
-    ["Loop se bahar nikalne wala keyword kaunsa hai?", ["stop", "exit", "break", "return-loop"], 2],
-    ["Browser mein origin ke liye data store karne wali API kaunsi hai?", ["window.store", "localStorage", "browserDB", "sessionFile"], 1],
-    ["Closure kya hota hai?", ["CSS rule", "Aisa function jo apne lexical scope ko retain kare", "Closed tab", "Private HTML tag"], 1],
-    ["Transformed values se naya array banane wala method kaunsa hai?", ["filter", "reduce", "map", "transformArray"], 2],
-    ["Current object context ko refer karne wala keyword kaunsa hai?", ["self", "this", "current", "object"], 1],
-    ["Delay ke baad callback schedule karne wali API kaunsi hai?", ["setTimeout", "delayCall", "waitFor", "later"], 0],
-    ["typeof null ka result kis type ka hota hai?", ["null", "object", "undefined", "empty"], 1],
-    ["Exceptions handle karne wali statement kaunsi hai?", ["try...catch", "handle...error", "safe...catch", "test...except"], 0]
-  ].map(([question, options, answer]) => ({ subject: "JavaScript", question, options, answer }));
-  return [...html, ...css, ...javascript];
-}
-
-function shuffle(items) {
-  const copy = [...items];
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1));
-    [copy[index], copy[randomIndex]] = [copy[randomIndex], copy[index]];
-  }
-  return copy;
+  try { await document.documentElement.requestFullscreen(); }
+  catch (error) { throw new Error("Fullscreen permission is required before the exam can start."); }
+  if (!document.fullscreenElement) throw new Error("Fullscreen could not be activated. Please allow fullscreen and try again.");
 }
 
 function openRegistration() {
@@ -233,185 +192,186 @@ function openRegistration() {
 function closeRegistration() { $("registrationModal").classList.remove("open"); }
 
 function openAdminPanel() {
+  if (state.examActive) { toast("Exam ke dauran Admin Panel allowed nahi hai.", "danger"); return; }
   $("adminModal").classList.add("open");
-  $("adminCodeInput").focus();
 }
 
 function closeAdminPanel() {
+  $("adminPanelFrame").contentWindow.postMessage({ type: "skilltester:admin-closed" }, "*");
   $("adminModal").classList.remove("open");
-  $("adminDashboard").classList.add("hidden");
-  $("adminLoginForm").classList.remove("hidden");
-  $("adminCodeInput").value = "";
-  adminSession = false;
-}
-
-async function verifyAdminAccess(event) {
-  event.preventDefault();
-  const error = $("adminError");
-  error.textContent = "";
-  const code = $("adminCodeInput").value.trim();
-  if (!code) { error.textContent = "Admin password is required."; return; }
-  try {
-    const snapshot = await database.ref("adminCode").once("value");
-    const admin = snapshot.val() || {};
-    const configuredPassword = String(admin.password || DEFAULT_ADMIN_PASSWORD);
-    if (code !== configuredPassword) throw new Error("Admin password is incorrect.");
-    if (!admin.password) database.ref("adminCode/password").set(configuredPassword).catch(() => undefined);
-    adminSession = true;
-    $("adminLoginForm").classList.add("hidden");
-    $("adminDashboard").classList.remove("hidden");
-    await refreshAdminDashboard();
-  } catch (errorValue) { error.textContent = errorValue.message || "Admin access could not be verified."; }
 }
 
 function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]));
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]));
 }
 
-async function refreshAdminDashboard() {
-  if (!adminSession) return;
-  const refreshButton = $("refreshAdmin");
-  refreshButton.classList.add("is-loading");
-  refreshButton.disabled = true;
-  refreshButton.textContent = "Refreshing...";
-  try {
-  const [adminSnapshot, codeSnapshot, feedbackSnapshot, resultSnapshot] = await Promise.all([
-    database.ref("adminCode").once("value"),
-    database.ref("passcodes").once("value"),
-    database.ref("examFeedback").limitToLast(20).once("value"),
-    database.ref("examResults").limitToLast(20).once("value")
-  ]);
-  const admin = adminSnapshot.val() || {};
-  const codes = codeSnapshot.val() || {};
-  const feedback = feedbackSnapshot.val() || {};
-  const results = resultSnapshot.val() || {};
-  const codeEntries = Object.entries(codes);
-  const unused = codeEntries.filter(([, value]) => value?.isUsed !== true).length;
-  $("adminStatus").textContent = admin.isEnabled === true ? "Enabled" : "Disabled";
-  $("adminStatus").classList.toggle("timer-warning", admin.isEnabled !== true);
-  $("unusedCodes").textContent = `${unused} / 10`;
-  $("passcodeList").innerHTML = codeEntries.map(([code, value]) => `<div class="admin-row"><span><strong>${escapeHtml(code)}</strong> ${escapeHtml(value?.label || "Candidate")}</span><span class="${value?.isUsed ? "used" : "available"}">${value?.isUsed ? "Used" : "Available"}</span></div>`).join("") || "<p class='modal-copy'>No candidate codes found.</p>";
-  const feedbackEntries = Object.values(feedback).reverse();
-  const resultEntries = Object.entries(results).reverse();
-  $("resultList").innerHTML = resultEntries.map(([key, item]) => `<div class="admin-row"><span><strong>${escapeHtml(item.candidate?.fullName || "Candidate")}</strong><br>${escapeHtml(item.status || "UNKNOWN")} · ${escapeHtml(item.marks ?? "-")}/${EXAM_TOTAL_MARKS}</span><button class="admin-delete" type="button" data-result-key="${escapeHtml(key)}">Delete</button></div>`).join("") || "<p class='modal-copy'>No exam results yet.</p>";
-  document.querySelectorAll("[data-result-key]").forEach((button) => button.addEventListener("click", () => deleteExamResult(button.dataset.resultKey)));
-  $("feedbackList").innerHTML = feedbackEntries.map((item) => `<div class="admin-row"><span><strong>${escapeHtml(item.emoji || "")} ${escapeHtml(item.candidate?.fullName || "Candidate")}</strong><br>${escapeHtml(item.message || "No message")}</span><span>${escapeHtml(item.score ?? "-")}/100</span></div>`).join("") || "<p class='modal-copy'>No passed-candidate feedback yet.</p>";
-  $("toggleAdmin").textContent = admin.isEnabled === true ? "Disable Admin Access" : "Enable Admin Access";
-  $("toggleAdmin").dataset.enabled = admin.isEnabled === true ? "true" : "false";
-  } finally {
-    refreshButton.classList.remove("is-loading");
-    refreshButton.disabled = false;
-    refreshButton.textContent = "Refresh Live Data";
-  }
-}
-
-async function deleteExamResult(resultKey) {
-  if (!adminSession || !resultKey || !window.confirm("Is exam result ko permanently delete karna hai?")) return;
-  const button = document.querySelector(`[data-result-key="${CSS.escape(resultKey)}"]`);
-  if (button) { button.disabled = true; button.textContent = "Deleting..."; button.classList.add("is-loading"); }
-  try {
-    await database.ref(`examResults/${resultKey}`).remove();
-    await refreshAdminDashboard();
-    toast("Exam result deleted live from Firebase.");
-  } catch (error) {
-    if (button) { button.disabled = false; button.textContent = "Delete"; button.classList.remove("is-loading"); }
-    toast("Result delete nahi ho saka.", "danger");
-  }
-}
-
-async function toggleAdminAccess() {
-  if (!adminSession) return;
-  const enabled = $("toggleAdmin").dataset.enabled !== "true";
-  const toggleButton = $("toggleAdmin");
-  toggleButton.classList.add("is-loading");
-  toggleButton.disabled = true;
-  toggleButton.textContent = "Saving...";
-  try {
-    await database.ref("adminCode/isEnabled").set(enabled);
-    await refreshAdminDashboard();
-    toast(`Admin access ${enabled ? "enabled" : "disabled"}.`);
-  } finally {
-    toggleButton.classList.remove("is-loading");
-    toggleButton.disabled = false;
-  }
-}
-
-function createOneTimeCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-async function generatePasscode() {
-  if (!adminSession) return;
-  const button = $("generatePasscode");
-  button.disabled = true;
-  button.textContent = "Generating...";
-  try {
-    let generatedCode = "";
-    for (let attempt = 0; attempt < 10 && !generatedCode; attempt += 1) {
-      const candidateCode = createOneTimeCode();
-      const result = await database.ref(`passcodes/${candidateCode}`).transaction((current) => current || {
-        label: "Generated One-Time",
-        isUsed: false,
-        createdAt: firebase.database.ServerValue.TIMESTAMP
-      });
-      if (result.committed && result.snapshot.val()?.isUsed === false) generatedCode = candidateCode;
-    }
-    if (!generatedCode) throw new Error("Unique passcode generate nahi ho saka.");
-    await refreshAdminDashboard();
-    toast(`New one-time passcode: ${generatedCode}`, "success");
-  } catch (error) {
-    toast(error.message || "Passcode generate nahi ho saka.", "danger");
-  } finally {
-    button.disabled = false;
-    button.textContent = "Generate One-Time Passcode";
-  }
-}
-
-async function verifyPasscode(code) {
+// -------------------------------------------------------------
+// VERIFY PASSCODE: PERMANENT LIFETIME ID (999990) & ONE-TIME CODE
+// -------------------------------------------------------------
+async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
   const adminSnapshot = await database.ref("adminCode").once("value");
   const admin = adminSnapshot.val() || {};
 
-  if (admin.isEnabled !== true) {
+  if (admin.isEnabled === false) {
     throw new Error("Exam access is temporarily disabled by the administrator.");
   }
 
-  if (String(admin.code || admin.value || "").padStart(6, "0") === code) {
-    return { type: "regular" };
+  // 1. FIRST CHECK: PERMANENT LIFETIME ID IN FIREBASE
+  const studentKey = String(studentId).trim().toUpperCase().replace(/[.#$\[\]]/g, "_");
+  const permSnap = await database.ref(`permanentStudents/${studentKey}`).once("value");
+  const permStudent = permSnap.val();
+
+  if (permStudent) {
+    // 🔥 THE TWIST: Check if ID is blocked from admin side
+    if (permStudent.isBlocked === true) {
+      throw new Error("Your ID is blocked from admin side");
+    }
+
+    // Check Universal Lifetime Password (999990)
+    const expectedPass = String(permStudent.password || UNIVERSAL_LIFETIME_PASSWORD).trim();
+    if (code !== expectedPass && code !== UNIVERSAL_LIFETIME_PASSWORD) {
+      throw new Error("Incorrect lifetime password. Use 999990.");
+    }
+
+    // Check student details match registered record
+    if (String(permStudent.studentName).trim().replace(/\s+/g, " ").toLowerCase() !== fullName.trim().replace(/\s+/g, " ").toLowerCase()) {
+      throw new Error("Student Name does not match registered record for this ID.");
+    }
+    if (String(permStudent.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() !== fatherName.trim().replace(/\s+/g, " ").toLowerCase()) {
+      throw new Error("Father Name does not match registered record for this ID.");
+    }
+    if (String(permStudent.phone || "").trim() !== phone.trim()) {
+      throw new Error("Mobile number does not match registered record for this ID.");
+    }
+
+    // Permanent student verified! (Never displays "Candidate", exact name saved)
+    state.exam = permStudent.exam || "All Subjects";
+    return {
+      studentId: permStudent.studentId || studentId,
+      fullName: permStudent.studentName || fullName,
+      studentName: permStudent.studentName || fullName,
+      fatherName: permStudent.fatherName || fatherName,
+      phone: permStudent.phone || phone,
+      exam: state.exam,
+      isPermanent: true,
+      studentKey
+    };
   }
 
-  const lockedUntil = getLockout();
-  if (lockedUntil) throw new Error(`This device is locked for ${formatTime(Math.ceil((lockedUntil - Date.now()) / 1000))}. Admin access can bypass this lock.`);
+  // 2. SECOND CHECK: ONE-TIME PASSCODE
   const passcodeRef = database.ref(`passcodes/${code}`);
   const snapshot = await passcodeRef.once("value");
   const passcode = snapshot.val();
-  if (!passcode || passcode.isUsed === true) throw new Error("This passcode is invalid or has already been used.");
-  const result = await passcodeRef.transaction((current) => {
-    if (!current || current.isUsed === true) return;
-    return { ...current, isUsed: true, usedAt: firebase.database.ServerValue.TIMESTAMP };
-  });
-  if (!result.committed || !result.snapshot.val()?.isUsed) throw new Error("This passcode was claimed by another candidate.");
-  return { type: "regular" };
+  if (!passcode || passcode.isUsed !== false) throw new Error("This passcode is invalid, expired, or has already been used.");
+  if (!passcode.studentId || !passcode.studentName || !passcode.exam) {
+    throw new Error("This older code needs to be assigned to a student and exam by the administrator first.");
+  }
+  if (!["All Subjects", "HTML", "CSS", "JavaScript"].includes(passcode.exam)) {
+    throw new Error("The exam assigned to this code is invalid. Ask the administrator to issue a corrected code.");
+  }
+  if (Number(passcode.expiresAt || Infinity) <= Date.now()) throw new Error("This passcode has expired. Ask the administrator for a new code.");
+  if (String(passcode.studentId).trim().toUpperCase() !== studentId.trim().toUpperCase()) {
+    throw new Error("Student ID does not match the student assigned to this passcode.");
+  }
+  if (String(passcode.studentName).trim().replace(/\s+/g, " ").toLowerCase() !== fullName.trim().replace(/\s+/g, " ").toLowerCase()) {
+    throw new Error("Student name does not match the name registered by the administrator.");
+  }
+  if (String(passcode.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() !== fatherName.trim().replace(/\s+/g, " ").toLowerCase()) {
+    throw new Error("Father name does not match the student record created by the administrator.");
+  }
+  if (String(passcode.phone || "").trim() !== phone) {
+    throw new Error("Mobile number does not match the student record created by the administrator.");
+  }
+  
+  let result;
+  try {
+    result = await passcodeRef.transaction((current) => {
+      if (!current) return null;
+      if (current.isUsed !== false ||
+          String(current.studentId || "").trim().toUpperCase() !== String(passcode.studentId).trim().toUpperCase() ||
+          current.exam !== passcode.exam ||
+          String(current.studentName || "").trim().replace(/\s+/g, " ").toLowerCase() !==
+            String(passcode.studentName).trim().replace(/\s+/g, " ").toLowerCase() ||
+          String(current.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() !==
+            String(passcode.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() ||
+          String(current.phone || "").trim() !== String(passcode.phone || "").trim() ||
+          Number(current.expiresAt || Infinity) <= Date.now()) return current;
+      return {
+        ...current,
+        isUsed: true
+      };
+    });
+  } catch (error) {
+    if (String(error.code || error.message || "").includes("PERMISSION_DENIED")) {
+      throw new Error("Firebase rejected the one-time-code update. Check Realtime Database write rules for passcodes/{code}.");
+    }
+    throw new Error(`Could not claim this code from Firebase: ${error.message || "database request failed"}`);
+  }
+  if (!result.committed) {
+    const latest = (await passcodeRef.once("value")).val();
+    if (!latest) throw new Error("This passcode no longer exists. Ask the administrator to issue a new code.");
+    if (latest.isUsed === true) throw new Error("This passcode has already been used.");
+    if (Number(latest.expiresAt || Infinity) <= Date.now()) throw new Error("This passcode has expired. Ask the administrator for a new code.");
+    if (String(latest.studentId || "").trim().toUpperCase() !== studentId.trim().toUpperCase()) {
+      throw new Error("This passcode was reassigned to a different student. Ask the administrator to verify the entry.");
+    }
+    throw new Error("Firebase did not save the one-time-code claim. Check Realtime Database write rules and try again.");
+  }
+  
+  state.exam = passcode.exam;
+  return {
+    studentId: passcode.studentId || studentId,
+    fullName: passcode.studentName || fullName,
+    studentName: passcode.studentName || fullName,
+    fatherName: passcode.fatherName || fatherName,
+    phone: passcode.phone || phone,
+    exam: passcode.exam,
+    isPermanent: false
+  };
 }
 
 async function submitRegistration(event) {
   event.preventDefault();
+  const studentId = $("studentId").value.trim();
   const fullName = $("fullName").value.trim();
   const fatherName = $("fatherName").value.trim();
   const phone = $("candidatePhone").value.trim();
   const code = $("accessCode").value.trim();
   const error = $("registrationError");
   error.textContent = "";
+
+  if (!/^[A-Za-z0-9_-]{2,30}$/.test(studentId)) { error.textContent = "Student ID mein sirf letters, numbers, hyphen aur underscore use karein."; return; }
   if (!/^[A-Za-z ]{2,30}$/.test(fullName) || !/^[A-Za-z ]{2,30}$/.test(fatherName)) { error.textContent = "Student aur father name mein sirf letters/spaces hon, maximum 30 characters."; return; }
   if (!/^03\d{9}$/.test(phone)) { error.textContent = "Mobile number exactly 11 digits ho aur 03 se start ho."; return; }
-  if (!/^\d{6}$/.test(code)) { error.textContent = "Access passcode must contain exactly 6 digits."; return; }
+  if (code.length < 4) { error.textContent = "Enter 6-digit access code or lifetime password (999990)."; return; }
+
   $("registrationSubmit").disabled = true;
+  const fullscreenRequest = requestExamFullscreen();
   try {
-    state.candidate = { fullName, fatherName, phone };
-    await verifyPasscode(code);
+    await fullscreenRequest;
+    const assignedEntry = await verifyPasscode(code, studentId, fullName, fatherName, phone);
+    state.candidate = assignedEntry;
     closeRegistration();
     await runLoadingSequence();
-    startExam();
+    hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
+
+    // LIVE BLOCK LISTENER: If student is inside exam and Admin blocks them, terminate exam instantly!
+    if (assignedEntry.isPermanent && assignedEntry.studentKey) {
+      if (state.liveBlockListener) state.liveBlockListener.off();
+      state.liveBlockListener = database.ref(`permanentStudents/${assignedEntry.studentKey}/isBlocked`);
+      state.liveBlockListener.on("value", (snap) => {
+        if (snap.val() === true && state.examActive) {
+          terminateActiveExam("Your ID is blocked from admin side");
+        }
+      });
+    }
+
+    $("examCardFrame").contentWindow.postMessage({
+      type: "skilltester:start-exam",
+      exam: state.exam
+    }, "*");
   } catch (verificationError) {
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
     $("loaderScreen").classList.remove("open");
     error.textContent = verificationError.message || "Passcode verification failed.";
   } finally { $("registrationSubmit").disabled = false; }
@@ -426,7 +386,7 @@ function runLoadingSequence() {
   return new Promise((resolve) => {
     window.setTimeout(() => {
       $("loaderTitle").textContent = "Initializing Anti-Cheating Environment...";
-      $("loaderText").textContent = "Locking exam session and preparing question bank";
+      $("loaderText").textContent = "Locking keyboard and preparing secure questions";
       $("loaderProgress").style.width = "100%";
       document.querySelectorAll(".loader-step")[0]?.classList.remove("active");
       document.querySelectorAll(".loader-step")[1]?.classList.add("active");
@@ -436,83 +396,74 @@ function runLoadingSequence() {
       document.querySelectorAll(".loader-step")[2]?.classList.add("active");
       $("loaderScreen").classList.remove("open");
       resolve();
-    }, 4000);
+    }, 2000);
   });
 }
 
-async function startExam() {
-  const questionBank = buildQuestionBank();
-  const subjectOrder = ["HTML", "CSS", "JavaScript"].sort(() => Math.random() - 0.5);
-  state.questions = subjectOrder.flatMap((subject) => questionBank.filter((question) => question.subject === subject));
-  state.questionIndex = 0; state.score = 0; state.secondsLeft = EXAM_MINUTES * 60; state.examActive = false; state.finishing = false;
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ candidate: state.candidate, startedAt: Date.now() }));
-  await requestExamFullscreen();
-  state.examActive = true;
-  show("examView"); hide("homeView"); hide("resultView"); hide("failureView");
-  bindAntiCheat();
-  renderQuestion();
-  state.timerId = window.setInterval(() => {
-    state.secondsLeft -= 1;
-    $("timer").textContent = formatTime(state.secondsLeft);
-    if (state.secondsLeft <= 60) $("timer").classList.add("timer-warning");
-    if (state.secondsLeft <= 0) finishExam("Time expired.");
-  }, 1000);
-}
-
-function renderQuestion() {
-  const current = state.questions[state.questionIndex];
-  $("subjectBadge").textContent = current.subject;
-  $("questionNumber").textContent = `Question ${state.questionIndex + 1} of ${state.questions.length}`;
-  $("questionTitle").textContent = current.question;
-  $("score").textContent = `${calculateMarks(state.score)} / ${EXAM_TOTAL_MARKS}`;
-  $("timer").textContent = formatTime(state.secondsLeft);
-  $("questionProgress").style.width = `${(state.questionIndex / state.questions.length) * 100}%`;
-  const options = $("options"); options.innerHTML = ""; state.answerLocked = false;
-  current.options.forEach((optionText, optionIndex) => {
-    const button = document.createElement("button");
-    button.className = "option"; button.type = "button"; button.textContent = `${String.fromCharCode(65 + optionIndex)}. ${optionText}`;
-    button.addEventListener("click", () => answerQuestion(optionIndex, button)); options.appendChild(button);
-  });
-}
-
-function answerQuestion(selectedIndex, selectedButton) {
-  if (state.answerLocked || !state.examActive) return;
-  state.answerLocked = true;
-  const current = state.questions[state.questionIndex];
-  const optionButtons = [...$("options").querySelectorAll("button")];
-  optionButtons.forEach((button) => { button.disabled = true; });
-  if (selectedIndex === current.answer) { state.score += 1; selectedButton.classList.add("correct"); playSound("correct"); }
-  else { selectedButton.classList.add("wrong"); optionButtons[current.answer].classList.add("correct"); playSound("wrong"); }
-  $("score").textContent = `${calculateMarks(state.score)} / ${EXAM_TOTAL_MARKS}`;
-  window.setTimeout(() => {
-    state.questionIndex += 1;
-    if (state.questionIndex >= state.questions.length) finishExam("Exam completed.");
-    else renderQuestion();
-  }, 650);
-}
-
-function terminateExam(reason) { if (state.examActive) finishExam(reason, true); }
-
-function finishExam(reason, cheating = false) {
+function finalizeExamResult(reason, cheating = false, result = {}) {
   if (state.finishing) return;
-  state.finishing = true; state.examActive = false;
-  window.clearInterval(state.timerId); sessionStorage.removeItem(SESSION_KEY);
+  state.finishing = true;
+  state.examActive = false;
+  if (state.liveBlockListener) {
+    state.liveBlockListener.off();
+    state.liveBlockListener = null;
+  }
+  document.body.classList.remove("exam-in-progress");
+  state.score = Number.isInteger(result.correctAnswers)
+    ? Math.max(0, Math.min(result.correctAnswers, result.questionCount || 0))
+    : state.score;
+  state.questionCount = Number.isInteger(result.questionCount) && result.questionCount > 0
+    ? result.questionCount
+    : state.questionCount;
+  state.answerReview = !cheating && Array.isArray(result.answerReview)
+    ? result.answerReview.filter((item) => item &&
+      typeof item.subject === "string" &&
+      typeof item.question === "string" &&
+      (typeof item.selectedAnswer === "string" || item.selectedAnswer === null) &&
+      typeof item.correctAnswer === "string")
+    : [];
+  renderAnswerReview(state.answerReview);
+  sessionStorage.removeItem(SESSION_KEY);
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
   const finalMarks = calculateMarks(state.score);
   if (cheating || finalMarks < PASSING_SCORE) {
-    setLockout(reason); saveExamResult(finalMarks, cheating ? "TERMINATED" : "FAILED", reason); playSound("failure"); renderFailure(reason, cheating);
+    saveExamResult(finalMarks, cheating ? "TERMINATED" : "FAILED", reason); playSound("failure"); renderFailure(reason, cheating);
   } else { saveExamResult(finalMarks, "PASSED", reason); playSound("success"); renderResult(); }
 }
 
+function terminateActiveExam(reason) {
+  if (!state.examActive) return;
+  $("examCardFrame").contentWindow.postMessage({ type: "skilltester:terminate-exam", reason }, "*");
+  finalizeExamResult(reason, true);
+}
+
+// SAVE EXAM RESULT: ALWAYS saves actual student name (Never "Candidate")
 function saveExamResult(finalMarks, status, reason) {
+  const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
+  const studentId = state.candidate?.studentId || "—";
+  const isPermanent = state.candidate?.isPermanent === true;
+
   database.ref("examResults").push({
-    candidate: state.candidate,
+    candidate: {
+      studentId: studentId,
+      fullName: actualName,
+      studentName: actualName,
+      fatherName: state.candidate?.fatherName || "—",
+      phone: state.candidate?.phone || "—",
+      exam: state.exam,
+      isPermanent: isPermanent
+    },
+    studentName: actualName,
+    studentId: studentId,
+    exam: state.exam,
     marks: finalMarks,
     totalMarks: EXAM_TOTAL_MARKS,
+    correctAnswers: state.score,
     percentage: finalMarks,
     status,
     reason,
-    questionCount: state.questions.length,
+    isPermanent: isPermanent,
+    questionCount: state.questionCount,
     createdAt: firebase.database.ServerValue.TIMESTAMP
   }).catch(() => undefined);
 }
@@ -525,16 +476,17 @@ function renderFailure(reason, cheating) {
   $("scorecard").classList.add("result-failed");
   $("resultIcon").textContent = "!";
   $("resultEyebrow").textContent = cheating ? "Security termination" : "Assessment complete";
-  $("resultHeading").textContent = cheating ? "Cheating detected: exam terminated." : "Exam failed: pass mark not reached.";
-  $("resultSubtitle").textContent = cheating ? `${reason} A 30-minute re-attempt lock has been applied.` : `${reason} A 30-minute re-attempt lock has been applied.`;
-  $("resultName").textContent = state.candidate.fullName;
-  $("resultFather").textContent = state.candidate.fatherName;
+  $("resultHeading").textContent = cheating ? "Exam Terminated" : "Exam failed: pass mark not reached.";
+  $("resultSubtitle").textContent = reason || "Session closed.";
+  
+  // Exact student name
+  const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
+  $("resultName").textContent = actualName;
+  $("resultFather").textContent = state.candidate?.fatherName || "—";
   $("resultScore").textContent = `${finalMarks} / ${EXAM_TOTAL_MARKS}`;
   $("resultPercentage").textContent = `${percentage}%`;
   $("resultRating").textContent = cheating ? "TERMINATED" : "FAILED";
-  $("feedbackPanel").classList.add("hidden");
   loadLiveResults();
-  loadLiveFeedback();
   window.setTimeout(() => $("resultView").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 
@@ -544,71 +496,47 @@ function renderResult() {
   $("scorecard").classList.remove("result-failed");
   const finalMarks = calculateMarks(state.score);
   const percentage = finalMarks;
-  $("resultName").textContent = state.candidate.fullName;
-  $("resultFather").textContent = state.candidate.fatherName;
+
+  // Exact student name
+  const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
+  $("resultName").textContent = actualName;
+  $("resultFather").textContent = state.candidate?.fatherName || "—";
   $("resultScore").textContent = `${finalMarks} / ${EXAM_TOTAL_MARKS}`;
   $("resultPercentage").textContent = `${percentage}%`;
   $("resultRating").textContent = percentage >= 90 ? "Outstanding" : percentage >= 75 ? "Excellent" : "Qualified";
   $("resultIcon").textContent = "✓";
   $("resultEyebrow").textContent = "Assessment passed";
   $("resultHeading").textContent = "Congratulations, you passed.";
-  $("resultSubtitle").textContent = "Your verified result card is ready. Download it, then share your feedback below.";
-  show("feedbackPanel");
+  $("resultSubtitle").textContent = "Your verified result card is ready. Download it below.";
   loadLiveResults();
-  loadLiveFeedback();
   window.setTimeout(() => $("resultView").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 
 async function downloadScorecard() {
+  const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   const canvas = await html2canvas($("scorecard"), { backgroundColor: "#1e293b", scale: 2 });
   const image = canvas.toDataURL("image/png");
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [canvas.width, canvas.height] });
   pdf.addImage(image, "PNG", 0, 0, canvas.width, canvas.height);
-  pdf.save(`skilltester-${state.candidate.fullName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`);
-}
-
-function selectEmoji(button) {
-  document.querySelectorAll(".emoji-btn").forEach((node) => node.classList.remove("selected"));
-  button.classList.add("selected"); state.selectedEmoji = button.dataset.emoji;
-}
-async function submitFeedback(event) {
-  event.preventDefault();
-  const message = $("feedbackMessage").value.trim();
-  if (!message || !state.selectedEmoji) { $("feedbackStatus").textContent = "Choose an emoji and write feedback first."; return; }
-  $("feedbackStatus").textContent = "Submitting...";
-  try {
-    await database.ref("examFeedback").push({ candidate: state.candidate, score: calculateMarks(state.score), emoji: state.selectedEmoji, message, createdAt: firebase.database.ServerValue.TIMESTAMP });
-    $("feedbackStatus").textContent = "Thanks. Your feedback was recorded.";
-    $("feedbackMessage").value = "";
-  } catch (error) { $("feedbackStatus").textContent = "Feedback could not be submitted right now."; }
+  pdf.save(`skilltester-${actualName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`);
 }
 
 async function loadLiveResults() {
   const status = $("resultsStatus");
   const list = $("publicResultsList");
+  if (!status || !list) return;
   status.textContent = "Live results Firebase se load ho rahe hain...";
   try {
     const snapshot = await database.ref("examResults").limitToLast(30).once("value");
     const results = Object.values(snapshot.val() || {}).reverse();
-    list.innerHTML = results.map((result) => `<div class="public-result-row"><span><strong>${escapeHtml(result.candidate?.fullName || "Candidate")}</strong><small>${escapeHtml(result.status || "UNKNOWN")}</small></span><strong class="public-result-score">${escapeHtml(result.marks ?? "-")} / ${EXAM_TOTAL_MARKS}</strong></div>`).join("");
+    list.innerHTML = results.map((result) => {
+      const studentName = result.candidate?.fullName || result.candidate?.studentName || result.studentName || "Student";
+      return `<div class="public-result-row"><span><strong>${escapeHtml(studentName)}</strong><small>${escapeHtml(result.status || "UNKNOWN")}</small></span><strong class="public-result-score">${escapeHtml(result.marks ?? "-")} / ${EXAM_TOTAL_MARKS}</strong></div>`;
+    }).join("");
     status.textContent = results.length ? "Latest results live Firebase se update ho rahe hain." : "Abhi koi exam result available nahi hai.";
   } catch (error) {
     status.textContent = "Live results load nahi ho sake. Refresh karke dobara try karein.";
-  }
-}
-
-async function loadLiveFeedback() {
-  const status = $("publicFeedbackStatus");
-  const list = $("publicFeedbackList");
-  status.textContent = "Live feedback Firebase se load ho raha hai...";
-  try {
-    const snapshot = await database.ref("examFeedback").limitToLast(30).once("value");
-    const feedbackEntries = Object.values(snapshot.val() || {}).reverse();
-    list.innerHTML = feedbackEntries.map((item) => `<article class="public-feedback-item"><div class="public-feedback-meta"><strong>${escapeHtml(item.emoji || "💬")} ${escapeHtml(item.candidate?.fullName || "Candidate")}</strong><span>${escapeHtml(item.score ?? "-")} / ${EXAM_TOTAL_MARKS}</span></div><p>${escapeHtml(item.message || "No feedback message")}</p></article>`).join("");
-    status.textContent = feedbackEntries.length ? "Recent feedback live Firebase se show ho raha hai." : "Abhi koi feedback submit nahi hua.";
-  } catch (error) {
-    status.textContent = "Feedback load nahi ho saka. Refresh karke dobara try karein.";
   }
 }
 
@@ -622,14 +550,15 @@ function goHome(event) {
 function goExam(event) {
   event.preventDefault();
   if (state.examActive) { $("examView").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
-  openRegistration();
+  hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
+  $("examView").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function goResults(event) {
   event.preventDefault();
+  if (state.examActive) { toast("Exam ke dauran Results par jana allowed nahi hai.", "danger"); return; }
   hide("examView"); hide("homeView"); hide("failureView"); show("resultView");
   loadLiveResults();
-  loadLiveFeedback();
   $("resultView").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -638,20 +567,60 @@ $("closeRegistration").addEventListener("click", closeRegistration);
 $("registrationForm").addEventListener("submit", submitRegistration);
 $("adminButton").addEventListener("click", openAdminPanel);
 $("closeAdmin").addEventListener("click", closeAdminPanel);
-$("adminLoginForm").addEventListener("submit", verifyAdminAccess);
-$("refreshAdmin").addEventListener("click", refreshAdminDashboard);
-$("generatePasscode").addEventListener("click", generatePasscode);
-$("toggleAdmin").addEventListener("click", toggleAdminAccess);
 $("downloadButton").addEventListener("click", downloadScorecard);
 $("refreshResults").addEventListener("click", loadLiveResults);
-$("refreshFeedback").addEventListener("click", loadLiveFeedback);
-$("feedbackForm").addEventListener("submit", submitFeedback);
+
+window.addEventListener("message", (event) => {
+  const frame = $("examCardFrame");
+  if (event.source !== frame.contentWindow || !event.data || typeof event.data !== "object") return;
+  const message = event.data;
+  if (message.type === "skilltester:begin-exam") {
+    if (state.examActive) {
+      toast("Exam pehle se chal raha hai.", "danger");
+      return;
+    }
+    hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
+    openRegistration();
+  } else if (message.type === "skilltester:exam-started") {
+    if (!state.candidate) {
+      frame.contentWindow.postMessage({
+        type: "skilltester:terminate-exam",
+        reason: "Secure exam session could not be started."
+      }, "*");
+      toast("Secure exam session could not be started.", "danger");
+      return;
+    }
+    state.examActive = true;
+    state.finishing = false;
+    state.score = 0;
+    state.questionCount = Number.isInteger(message.questionCount) && message.questionCount > 0
+      ? message.questionCount
+      : 0;
+    document.body.classList.add("exam-in-progress");
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ candidate: state.candidate, startedAt: Date.now() }));
+    bindAntiCheat();
+    if (!document.fullscreenElement) terminateActiveExam("Fullscreen was exited before the exam started.");
+  } else if (message.type === "skilltester:exam-progress" && state.examActive) {
+    if (!Number.isInteger(message.correctAnswers) || !Number.isInteger(message.questionCount) ||
+        message.questionCount < 1 || message.correctAnswers < 0 ||
+        message.correctAnswers > message.questionCount) return;
+    state.score = message.correctAnswers;
+    state.questionCount = message.questionCount;
+  } else if (message.type === "skilltester:exam-finished" && state.examActive) {
+    finalizeExamResult(message.reason || "Exam completed.", message.cheating === true, message);
+  } else if (message.type === "skilltester:exam-error") {
+    toast(typeof message.message === "string" ? message.message : "Exam could not be started.", "danger");
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
+  }
+});
+
+$("studentId").addEventListener("input", (event) => { event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 30); });
 document.querySelector('.main-nav a[href="#homeView"]').addEventListener("click", goHome);
 document.querySelector('.main-nav a[href="#examView"]').addEventListener("click", goExam);
 document.querySelector('.main-nav a[href="#resultView"]').addEventListener("click", goResults);
-document.querySelectorAll(".emoji-btn").forEach((button) => button.addEventListener("click", () => selectEmoji(button)));
 $("fullName").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30); });
 $("fatherName").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30); });
 $("candidatePhone").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11); });
-$("accessCode").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6); });
+// Input limiter allows both 6-digit one-time code and lifetime passwords:
+$("accessCode").addEventListener("input", (event) => { event.target.value = event.target.value.slice(0, 20); });
 bindSecurityDefaults();

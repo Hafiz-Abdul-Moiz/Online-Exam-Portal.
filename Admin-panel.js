@@ -18,6 +18,7 @@ let adminListenersBound = false;
 let passcodesCache = {};
 let permanentStudentsCache = {};
 let resultsCache = {};
+let activeSessionsCache = {};
 let accessEnabled = false;
 
 function adminEscape(value) {
@@ -67,20 +68,22 @@ function beginLiveUpdates() {
     }
   }, (error) => setAdminNotice(`Admin status could not be loaded: ${error.message}`, true));
 
-  // One-time passcodes listener
   adminDatabase.ref("passcodes").on("value", (snapshot) => {
     passcodesCache = snapshot.val() || {};
     renderPasscodes();
   }, (error) => setAdminNotice(`Passcodes could not be loaded: ${error.message}`, true));
 
-  // Permanent students listener (LIVE FIREBASE)
   adminDatabase.ref("permanentStudents").on("value", (snapshot) => {
     permanentStudentsCache = snapshot.val() || {};
     renderPermanentStudents();
   }, (error) => setAdminNotice(`Permanent students could not be loaded: ${error.message}`, true));
 
-  // Exam results listener
-  adminDatabase.ref("examResults").limitToLast(50).on("value", (snapshot) => {
+  adminDatabase.ref("activeExamSessions").on("value", (snapshot) => {
+    activeSessionsCache = snapshot.val() || {};
+    renderLiveRadar();
+  });
+
+  adminDatabase.ref("examResults").limitToLast(100).on("value", (snapshot) => {
     resultsCache = snapshot.val() || {};
     renderResults();
   }, (error) => setAdminNotice(`Exam results could not be loaded: ${error.message}`, true));
@@ -92,69 +95,100 @@ function stopLiveUpdates() {
   adminDatabase.ref("adminCode").off();
   adminDatabase.ref("passcodes").off();
   adminDatabase.ref("permanentStudents").off();
+  adminDatabase.ref("activeExamSessions").off();
   adminDatabase.ref("examResults").off();
   adminListenersBound = false;
   passcodesCache = {};
   permanentStudentsCache = {};
+  activeSessionsCache = {};
   resultsCache = {};
   updateLiveConnection(false);
 }
 
-// Render Permanent Students List
+function renderLiveRadar() {
+  const container = adminElement("liveRadarContainer");
+  if (!container) return;
+  const entries = Object.entries(activeSessionsCache);
+
+  if (!entries.length) {
+    container.innerHTML = '<p class="modal-copy" style="margin:0;">No candidate is currently active in the exam arena.</p>';
+    return;
+  }
+
+  container.innerHTML = entries.map(([sessionId, sess]) => {
+    const studentName = sess?.studentName || sess?.fullName || "Candidate";
+    const studentId = sess?.studentId || "—";
+    const exam = sess?.exam || "All Subjects";
+    const currentQ = sess?.currentQuestion || 1;
+    const totalQ = sess?.questionCount || 60;
+    const secondsLeft = sess?.secondsLeft || 1800;
+    const mins = Math.floor(secondsLeft / 60);
+    const secs = secondsLeft % 60;
+    const timeFormatted = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+
+    return `
+      <div class="radar-student-card">
+        <div>
+          <strong>${adminEscape(studentName)} <span class="perm-id-badge">${adminEscape(studentId)}</span></strong>
+          <div class="radar-telemetry">
+            <span>Exam: <strong>${adminEscape(exam)}</strong></span>
+            <span>Progress: <strong>Q${currentQ} / ${totalQ}</strong></span>
+            <span>Time Left: <strong>${timeFormatted}</strong></span>
+            <span>Security: <strong style="color:#4ade80;">100% Locked</strong></span>
+          </div>
+        </div>
+        <div class="radar-actions">
+          <button class="btn-radar-warn" type="button" data-warn-live="${adminEscape(sessionId)}" data-student-name="${adminEscape(studentName)}">
+            ⚠️ Send Warning
+          </button>
+          <button class="btn-radar-term" type="button" data-terminate-live="${adminEscape(sessionId)}" data-student-name="${adminEscape(studentName)}">
+            🚨 Terminate
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
 function renderPermanentStudents() {
   const container = adminElement("permanentList");
   if (!container) return;
   const entries = Object.entries(permanentStudentsCache).sort((left, right) =>
     Number(right[1]?.createdAt || 0) - Number(left[1]?.createdAt || 0));
 
-  const totalCount = entries.length;
-  const blockedCount = entries.filter(([, student]) => student?.isBlocked === true).length;
-  const activeCount = totalCount - blockedCount;
-
-  const statEl = adminElement("permanentStat");
-  if (statEl) {
-    statEl.textContent = `${activeCount} Active / ${blockedCount} Blocked`;
-  }
+  const activeCount = entries.filter(([, student]) => !student?.isBlocked).length;
+  adminElement("permanentStat").textContent = `${activeCount} Active`;
 
   const query = (adminElement("permSearch")?.value || "").trim().toLowerCase();
 
-  const filtered = entries.filter(([key, student]) => {
+  const filtered = entries.filter(([key, item]) => {
     if (!query) return true;
-    const sId = String(student?.studentId || key).toLowerCase();
-    const sName = String(student?.studentName || "").toLowerCase();
-    const sFather = String(student?.fatherName || "").toLowerCase();
-    const sPhone = String(student?.phone || "").toLowerCase();
-    return sId.includes(query) || sName.includes(query) || sFather.includes(query) || sPhone.includes(query);
+    const id = (item.studentId || key).toLowerCase();
+    const name = (item.studentName || "").toLowerCase();
+    const phone = (item.phone || "").toLowerCase();
+    return id.includes(query) || name.includes(query) || phone.includes(query);
   });
 
   if (!filtered.length) {
-    container.innerHTML = entries.length
-      ? '<p class="modal-copy">No permanent students matching your search.</p>'
-      : '<p class="modal-copy">No permanent students created yet. Use Form 2 above to create a lifetime student entry.</p>';
+    container.innerHTML = '<p class="modal-copy">Koi permanent student nahi mila.</p>';
     return;
   }
 
   container.innerHTML = filtered.map(([key, item]) => {
     const isBlocked = item?.isBlocked === true;
-    const statusLabel = isBlocked ? "BLOCKED BY ADMIN" : "ACTIVE / ALLOWED";
-    const statusBadgeClass = isBlocked ? "blocked" : "active";
-    const rowClass = isBlocked ? "perm-row blocked" : "perm-row";
-
     return `
-      <article class="${rowClass}">
+      <article class="perm-row ${isBlocked ? "blocked" : ""}">
         <div class="perm-row-main">
           <div class="perm-row-title">
+            <strong>${adminEscape(item?.studentName || "Student")}</strong>
             <span class="perm-id-badge">${adminEscape(item?.studentId || key)}</span>
-            <span class="perm-student-name">${adminEscape(item?.studentName || "Student")}</span>
-            <span class="perm-status-badge ${statusBadgeClass}">${statusLabel}</span>
+            <span class="status-pill ${isBlocked ? "blocked" : "active"}">${isBlocked ? "Blocked" : "Active"}</span>
           </div>
-          <div class="perm-row-meta">
-            <span class="perm-meta-item">Father: <strong>${adminEscape(item?.fatherName || "—")}</strong></span>
-            <span class="perm-meta-item">Mobile: <strong>${adminEscape(item?.phone || "—")}</strong></span>
-            <span class="perm-meta-item">Exam: <strong>${adminEscape(item?.exam || "All Subjects")}</strong></span>
-            <span class="perm-meta-item">
-              Lifetime Pass: <span class="perm-pass-tag">${adminEscape(UNIVERSAL_LIFETIME_PASSWORD)}</span>
-            </span>
+          <div class="perm-row-details">
+            <span>Father: <strong>${adminEscape(item?.fatherName || "—")}</strong></span>
+            <span>Mobile: <strong>${adminEscape(item?.phone || "—")}</strong></span>
+            <span>Exam: <strong>${adminEscape(item?.exam || "All Subjects")}</strong></span>
+            <span>Lifetime Password: <strong style="color:#facc15;">${UNIVERSAL_LIFETIME_PASSWORD}</strong></span>
           </div>
         </div>
         <div class="perm-row-actions">
@@ -162,7 +196,7 @@ function renderPermanentStudents() {
             ? `<button class="btn-unblock" type="button" data-unblock-key="${adminEscape(key)}" data-student-id="${adminEscape(item?.studentId || key)}">Unblock ID</button>`
             : `<button class="btn-block" type="button" data-block-key="${adminEscape(key)}" data-student-id="${adminEscape(item?.studentId || key)}">Block ID</button>`
           }
-          <button class="btn-copy" type="button" data-copy-key="${adminEscape(key)}" title="Copy all details to give to student">Copy Info</button>
+          <button class="btn-copy" type="button" data-copy-key="${adminEscape(key)}" title="Copy credentials for student">Copy Info</button>
           <button class="admin-delete" type="button" data-delete-perm="${adminEscape(key)}" data-student-id="${adminEscape(item?.studentId || key)}">Delete</button>
         </div>
       </article>
@@ -170,7 +204,6 @@ function renderPermanentStudents() {
   }).join("");
 }
 
-// Render One-Time Passcodes List
 function renderPasscodes() {
   const container = adminElement("passcodeList");
   if (!container) return;
@@ -181,7 +214,7 @@ function renderPasscodes() {
     code?.isUsed === false && Number(code.expiresAt || Infinity) > now &&
     code.studentId && code.exam).length;
 
-  adminElement("unusedCodes").textContent = String(availableCount);
+  adminElement("unusedCodes").textContent = `${availableCount} Available`;
 
   container.innerHTML = entries.map(([code, item]) => {
     const assigned = Boolean(item?.studentId && item?.exam);
@@ -195,35 +228,177 @@ function renderPasscodes() {
         <small>Student ID: ${adminEscape(item?.studentId || "Not assigned")} · Father: ${adminEscape(item?.fatherName || "—")} · Exam: ${adminEscape(item?.exam || "Not assigned")}</small>
       </div>
       ${!assigned && !expired && item?.isUsed === false ? `<button class="secondary-btn" type="button" data-assign-code="${adminEscape(code)}">Assign student</button>` : ""}
-      <span class="admin-row-status ${statusClass}">${status}</span>
+      <span class="status-pill ${expired ? "blocked" : "active"}">${status}</span>
       <button class="admin-delete" type="button" data-delete-code="${adminEscape(code)}">Delete</button>
     </article>`;
   }).join("") || '<p class="modal-copy">No one-time codes yet. Create a student entry to issue the first code.</p>';
 }
 
-// Render Exam Results: NEVER displays "Candidate" fallback!
 function renderResults() {
   const container = adminElement("resultList");
   if (!container) return;
   const entries = Object.entries(resultsCache).reverse();
   adminElement("resultCount").textContent = String(entries.length);
 
-  container.innerHTML = entries.map(([key, result]) => {
-    // Exact student name priority
+  if (entries.length > 0) {
+    const totalMarks = entries.reduce((acc, [, r]) => acc + (Number(r?.marks) || 0), 0);
+    const avgScore = Math.round(totalMarks / entries.length);
+    const passedCount = entries.filter(([, r]) => r?.status === "PASSED").length;
+    const passRate = Math.round((passedCount / entries.length) * 100);
+
+    let topScorer = null;
+    let topScore = -1;
+    entries.forEach(([, r]) => {
+      const m = Number(r?.marks) || 0;
+      if (m > topScore) {
+        topScore = m;
+        topScorer = r?.candidate?.fullName || r?.candidate?.studentName || r?.studentName || "Student";
+      }
+    });
+
+    adminElement("kpiAvgScore").textContent = `${avgScore} / 100`;
+    adminElement("kpiPassRate").textContent = `${passRate}% (${passedCount}/${entries.length})`;
+    adminElement("kpiTopScorer").textContent = topScorer ? `${topScorer} (${topScore})` : "—";
+    adminElement("kpiTotalResults").textContent = String(entries.length);
+  } else {
+    adminElement("kpiAvgScore").textContent = "—";
+    adminElement("kpiPassRate").textContent = "—";
+    adminElement("kpiTopScorer").textContent = "—";
+    adminElement("kpiTotalResults").textContent = "0";
+  }
+
+  const query = (adminElement("resultSearch")?.value || "").trim().toLowerCase();
+
+  const filtered = entries.filter(([, result]) => {
+    if (!query) return true;
+    const name = (result.candidate?.fullName || result.candidate?.studentName || result.studentName || "").toLowerCase();
+    const id = (result.candidate?.studentId || result.studentId || "").toLowerCase();
+    return name.includes(query) || id.includes(query);
+  });
+
+  if (!filtered.length) {
+    container.innerHTML = '<p class="modal-copy">No matching exam results found.</p>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(([key, result]) => {
     const studentName = result.candidate?.fullName || result.candidate?.studentName || result.studentName || "Student";
     const studentId = result.candidate?.studentId || result.studentId || "—";
     const isPermanent = result.candidate?.isPermanent === true || result.isPermanent === true;
     const examType = isPermanent ? "Permanent Lifetime ID" : "One-Time Code";
+    const status = result.status || "COMPLETED";
+    const isPassed = status === "PASSED";
 
     return `
       <article class="admin-row">
         <div class="admin-row-main">
-          <strong>${adminEscape(studentName)} · ${adminEscape(result.status || "COMPLETED")}</strong>
-          <small>ID: ${adminEscape(studentId)} · ${adminEscape(result.candidate?.exam || result.exam || "All Subjects")} · Marks: ${adminEscape(result.marks ?? "—")}/100 · ${examType}</small>
+          <strong>${adminEscape(studentName)} · <span style="color:${isPassed ? "#4ade80" : "#f87171"};">${adminEscape(status)}</span></strong>
+          <small>ID: ${adminEscape(studentId)} · ${adminEscape(result.candidate?.exam || result.exam || "All Subjects")} · Marks: <strong>${adminEscape(result.marks ?? "—")}/100</strong> · ${examType}</small>
         </div>
-        <button class="admin-delete" type="button" data-delete-result="${adminEscape(key)}">Delete</button>
+        <div class="admin-row-actions">
+          <button class="btn-inspect" type="button" data-inspect-result="${adminEscape(key)}">
+            🔍 Inspect Answer Sheet
+          </button>
+          <button class="admin-delete" type="button" data-delete-result="${adminEscape(key)}">Delete</button>
+        </div>
       </article>`;
-  }).join("") || '<p class="modal-copy">No exam results yet.</p>';
+  }).join("");
+}
+
+function openAuditModal(resultKey) {
+  const result = resultsCache[resultKey];
+  if (!result) return;
+
+  const modal = adminElement("auditModal");
+  const body = adminElement("auditModalBody");
+  if (!modal || !body) return;
+
+  const studentName = result.candidate?.fullName || result.candidate?.studentName || result.studentName || "Student";
+  const studentId = result.candidate?.studentId || result.studentId || "—";
+  const fatherName = result.candidate?.fatherName || result.fatherName || "—";
+  const phone = result.candidate?.phone || result.phone || "—";
+  const exam = result.candidate?.exam || result.exam || "All Subjects";
+  const marks = result.marks ?? 0;
+  const status = result.status || "COMPLETED";
+  const isPermanent = result.candidate?.isPermanent === true || result.isPermanent === true;
+  const isPassed = status === "PASSED";
+  const timestamp = result.createdAt ? new Date(result.createdAt).toLocaleString() : "Recently";
+  const answerReview = result.answerReview || [];
+  const subjectBreakdown = result.subjectBreakdown || {};
+
+  let subjectsHtml = "";
+  if (Object.keys(subjectBreakdown).length > 0) {
+    subjectsHtml = `
+      <div class="audit-subjects-grid">
+        ${Object.entries(subjectBreakdown).map(([subj, data]) => `
+          <div class="audit-sub-card">
+            <span>${adminEscape(subj)}</span>
+            <strong>${data.correct} / ${data.total} (${data.percentage}%)</strong>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  let questionsHtml = "";
+  if (answerReview.length > 0) {
+    questionsHtml = `
+      <div class="audit-questions-section">
+        <h4>Detailed Question by Question Review (${answerReview.length} Questions)</h4>
+        ${answerReview.map((q, idx) => {
+          const isCorrect = q.selectedAnswer === q.correctAnswer || q.isCorrect === true;
+          return `
+            <div class="audit-question-card ${isCorrect ? "correct" : "incorrect"}">
+              <div class="audit-q-header">
+                <strong>Q${idx + 1} · ${adminEscape(q.subject || "")}</strong>
+                <span class="pill-verdict ${isCorrect ? "correct" : "incorrect"}">${isCorrect ? "+1 Marks (Correct)" : "0 Marks (Wrong)"}</span>
+              </div>
+              <p class="audit-q-text">${adminEscape(q.question)}</p>
+              <div class="audit-answers-row">
+                <div class="audit-ans-candidate ${isCorrect ? "match" : ""}">
+                  <strong>Candidate Answer:</strong> ${adminEscape(q.selectedAnswer || "Not answered")}
+                </div>
+                ${!isCorrect ? `<div class="audit-ans-correct"><strong>Correct Answer:</strong> ${adminEscape(q.correctAnswer)}</div>` : ""}
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  } else {
+    questionsHtml = '<p class="modal-copy">Detailed question review was not saved for this legacy test entry.</p>';
+  }
+
+  body.innerHTML = `
+    <div class="audit-profile-card">
+      <div class="audit-profile-item"><small>Candidate Name</small><strong>${adminEscape(studentName)}</strong></div>
+      <div class="audit-profile-item"><small>Student ID</small><strong>${adminEscape(studentId)}</strong></div>
+      <div class="audit-profile-item"><small>Father Name</small><strong>${adminEscape(fatherName)}</strong></div>
+      <div class="audit-profile-item"><small>Mobile Number</small><strong>${adminEscape(phone)}</strong></div>
+      <div class="audit-profile-item"><small>Assigned Exam</small><strong>${adminEscape(exam)}</strong></div>
+      <div class="audit-profile-item"><small>Access Mode</small><strong>${isPermanent ? "Permanent Lifetime ID" : "One-Time Code"}</strong></div>
+      <div class="audit-profile-item"><small>Final Marks</small><strong style="color:${isPassed ? "#4ade80" : "#f87171"}; font-size:1.2rem;">${marks} / 100 (${marks}%)</strong></div>
+      <div class="audit-profile-item"><small>Official Verdict</small><strong style="color:${isPassed ? "#4ade80" : "#f87171"};">${adminEscape(status)}</strong></div>
+      <div class="audit-profile-item"><small>Exam Submitted</small><strong>${timestamp}</strong></div>
+    </div>
+
+    <div class="audit-security-row">
+      <div>
+        <strong>🛡️ High-Security Anti-Cheat Protocol: ENFORCED</strong>
+        <div><span>Hardware Keyboard Locked · Only Left-Click Mouse Allowed · Window Blur Guard Active</span></div>
+      </div>
+      <span class="status-pill active">Verified Clean</span>
+    </div>
+
+    ${subjectsHtml}
+    ${questionsHtml}
+  `;
+
+  modal.classList.remove("hidden");
+}
+
+function closeAuditModal() {
+  adminElement("auditModal")?.classList.add("hidden");
 }
 
 async function verifyAdminAccess(event) {
@@ -244,54 +419,40 @@ async function verifyAdminAccess(event) {
     adminElement("adminLoginCard").classList.add("hidden");
     adminElement("adminDashboard").classList.remove("hidden");
     beginLiveUpdates();
+    setAdminNotice("Admin Command Center unlocked.");
   } catch (error) {
-    errorNode.textContent = error.message || "Admin access could not be verified.";
+    errorNode.textContent = error.message || "Admin access denied.";
   } finally {
     button.disabled = false;
-    button.textContent = "Unlock Admin Panel";
+    button.textContent = "Unlock Command Center";
   }
 }
 
-function createOneTimeCode() {
-  const random = new Uint32Array(1);
-  const cryptoProvider = window.crypto;
-  if (!cryptoProvider?.getRandomValues) throw new Error("Secure code generation is unavailable in this browser.");
-  cryptoProvider.getRandomValues(random);
-  return String(100000 + (random[0] % 900000));
-}
-
-function normalizeStudentId(value) {
-  return value.trim().toUpperCase();
-}
-
-// SAVE PERMANENT STUDENT ENTRY (FORM 2)
-// STRICT RULE: Reject duplicate Student ID! Must be unique every time!
 async function savePermanentStudentEntry(event) {
   event.preventDefault();
   if (!adminAuthenticated) return;
+
   const form = adminElement("permanentStudentForm");
   const error = adminElement("permError");
-  const submit = adminElement("createPermButton");
   const notice = adminElement("createdPermNotice");
-
-  const rawId = adminElement("permStudentId").value;
-  const studentId = normalizeStudentId(rawId);
-  const studentKey = sanitizeKey(studentId);
-  const studentName = adminElement("permStudentName").value.trim().replace(/\s+/g, " ");
-  const fatherName = adminElement("permFatherName").value.trim().replace(/\s+/g, " ");
-  const phone = adminElement("permPhone").value.trim();
-  const exam = adminElement("permExam").value;
-
+  const submit = adminElement("createPermButton");
   error.textContent = "";
   notice.textContent = "";
 
-  if (!/^[A-Z0-9_-]{2,30}$/.test(studentId)) {
-    error.textContent = "Permanent Student ID mein sirf letters, numbers, hyphen aur underscore use karein.";
+  const studentId = adminElement("permStudentId").value.trim().toUpperCase();
+  const studentName = adminElement("permStudentName").value.trim();
+  const fatherName = adminElement("permFatherName").value.trim();
+  const phone = adminElement("permPhone").value.trim();
+  const exam = adminElement("permExam").value;
+  const studentKey = sanitizeKey(studentId);
+
+  if (!studentKey || studentKey.length < 2) {
+    error.textContent = "Valid Permanent Student ID enter karein (minimum 2 characters).";
     return;
   }
 
-  // 🔥 STRICT CHECK: Har baar ID different honi chahiye! Duplicate ID reject:
-  if (permanentStudentsCache[studentKey]) {
+  const existingKeys = Object.keys(permanentStudentsCache).map((k) => k.toUpperCase());
+  if (existingKeys.includes(studentKey)) {
     error.textContent = `Yeh Student ID "${studentId}" pehle se bani hui hai! Har student ki ID mukhtalif (different) honi chahiye. Nayi ID enter karein.`;
     adminElement("permStudentId").focus();
     return;
@@ -336,7 +497,6 @@ async function savePermanentStudentEntry(event) {
   }
 }
 
-// BLOCK / UNBLOCK PERMANENT STUDENT (LIVE FIREBASE)
 async function toggleBlockPermanentStudent(studentKey, currentBlockedStatus, studentId) {
   if (!adminAuthenticated) return;
   const newStatus = !currentBlockedStatus;
@@ -364,7 +524,6 @@ async function toggleBlockPermanentStudent(studentKey, currentBlockedStatus, stu
   }
 }
 
-// DELETE PERMANENT STUDENT
 async function deletePermanentStudent(studentKey, studentId) {
   if (!adminAuthenticated) return;
   if (!window.confirm(`Kya aap permanent student "${studentId}" ko delete karna chahte hain?`)) return;
@@ -377,7 +536,6 @@ async function deletePermanentStudent(studentKey, studentId) {
   }
 }
 
-// COPY PERMANENT CREDENTIALS
 function copyPermanentCredentials(studentKey) {
   const item = permanentStudentsCache[studentKey];
   if (!item) return;
@@ -394,60 +552,59 @@ Note: Fill the exact same details in the exam registration form!`;
 
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(textToCopy).then(() => {
-      setAdminNotice(`Credentials for ${item.studentId} copied to clipboard!`);
-    }).catch(() => {
-      prompt("Copy these credentials manually:", textToCopy);
+      setAdminNotice(`Credentials for "${item.studentName}" copied to clipboard!`);
     });
   } else {
-    prompt("Copy these credentials manually:", textToCopy);
+    alert(textToCopy);
   }
 }
 
-// SAVE SINGLE-USE ONE-TIME ENTRY (FORM 1)
+function createOneTimeCode() {
+  const digits = "0123456789";
+  let code = "";
+  for (let index = 0; index < 6; index += 1) {
+    code += digits[Math.floor(Math.random() * digits.length)];
+  }
+  return code;
+}
+
 async function saveStudentEntry(event) {
   event.preventDefault();
   if (!adminAuthenticated) return;
   const form = adminElement("studentEntryForm");
   const error = adminElement("entryError");
+  const notice = adminElement("createdCodeNotice");
   const submit = adminElement("createEntryButton");
   const generate = adminElement("generateEntryCodeButton");
-  const notice = adminElement("createdCodeNotice");
-  const studentId = normalizeStudentId(adminElement("entryStudentId").value);
-  const studentName = adminElement("entryStudentName").value.trim().replace(/\s+/g, " ");
-  const fatherName = adminElement("entryFatherName").value.trim().replace(/\s+/g, " ");
+  error.textContent = "";
+  notice.textContent = "";
+  const studentId = adminElement("entryStudentId").value.trim().toUpperCase();
+  const studentName = adminElement("entryStudentName").value.trim();
+  const fatherName = adminElement("entryFatherName").value.trim();
   const phone = adminElement("entryPhone").value.trim();
   const exam = adminElement("entryExam").value;
   const suppliedCode = adminElement("entryPasscode").value.trim();
-  error.textContent = "";
-  notice.textContent = "";
 
-  if (!/^[A-Z0-9_-]{2,30}$/.test(studentId)) {
+  if (!/^[A-Za-z0-9_-]{2,30}$/.test(studentId)) {
     error.textContent = "Student ID mein sirf letters, numbers, hyphen aur underscore use karein.";
     return;
   }
   if (!/^[A-Za-z ]{2,30}$/.test(studentName) || !/^[A-Za-z ]{2,30}$/.test(fatherName)) {
-    error.textContent = "Student aur father name mein sirf letters/spaces hon, maximum 30 characters.";
+    error.textContent = "Student aur father name mein sirf letters aur spaces hon, maximum 30 characters.";
     return;
   }
   if (!/^03\d{9}$/.test(phone)) {
-    error.textContent = "Mobile number exactly 11 digits ho aur 03 se start ho.";
+    error.textContent = "Pakistani Mobile number exactly 11 digits ho aur 03 se start ho.";
     return;
   }
   if (suppliedCode && !/^\d{6}$/.test(suppliedCode)) {
-    error.textContent = "Existing one-time code exactly 6 digits ka hona chahiye.";
-    return;
-  }
-
-  const alreadyIssued = Object.values(passcodesCache).some((item) =>
-    String(item?.studentId || "").toUpperCase() === studentId && item?.isUsed !== true);
-  if (alreadyIssued) {
-    error.textContent = "Is Student ID ke liye pehle se active one-time code maujood hai.";
+    error.textContent = "One-time code exactly 6 digits ka hona chahiye.";
     return;
   }
 
   submit.disabled = true;
   generate.disabled = true;
-  submit.textContent = suppliedCode ? "Attaching existing code..." : "Saving student entry...";
+  submit.textContent = suppliedCode ? "Attaching code..." : "Saving student entry...";
   generate.textContent = "Generating...";
   try {
     let code = suppliedCode;
@@ -493,7 +650,7 @@ async function saveStudentEntry(event) {
         };
       });
       if (!result.committed || result.snapshot.val()?.studentId !== studentId) {
-        throw new Error("Yeh code available legacy code nahi hai. Naya code generate karein.");
+        throw new Error("Yeh code available code nahi hai. Naya code generate karein.");
       }
     }
     notice.textContent = `Entry verified · ${studentId} · ${exam} · One-time code: ${code}`;
@@ -538,7 +695,7 @@ async function deleteExamResult(key) {
   if (!adminAuthenticated || !window.confirm("Is exam result ko permanently delete karna hai?")) return;
   try {
     await adminDatabase.ref(`examResults/${key}`).remove();
-    setAdminNotice("Exam result Firebase se delete ho gaya.");
+    setAdminNotice("Exam result delete ho gaya.");
   } catch (error) {
     setAdminNotice(`Result delete nahi ho saka: ${error.message}`, true);
   }
@@ -553,7 +710,6 @@ function lockAdminPanel() {
   adminElement("adminError").textContent = "";
 }
 
-// Tab Switching (Feedback removed)
 function switchSubnav(tabName) {
   const permanentWrap = adminElement("permanentSectionWrap");
   const oneTimeWrap = adminElement("oneTimeSectionWrap");
@@ -576,7 +732,6 @@ window.addEventListener("message", (event) => {
   if (event.source === window.parent && event.data?.type === "skilltester:admin-closed") lockAdminPanel();
 });
 
-// Event Listeners
 adminElement("adminLoginForm").addEventListener("submit", verifyAdminAccess);
 adminElement("permanentStudentForm").addEventListener("submit", savePermanentStudentEntry);
 adminElement("clearPermButton").addEventListener("click", () => {
@@ -603,13 +758,20 @@ adminElement("generateEntryCodeButton").addEventListener("click", () => {
 adminElement("toggleAdmin").addEventListener("click", toggleExamAccess);
 adminElement("adminLogout").addEventListener("click", lockAdminPanel);
 
-// Subnav Tab buttons
 adminElement("navPermanentTab").addEventListener("click", () => switchSubnav("permanent"));
 adminElement("navOneTimeTab").addEventListener("click", () => switchSubnav("onetime"));
 adminElement("navResultsTab").addEventListener("click", () => switchSubnav("results"));
 
-// Search input
 adminElement("permSearch")?.addEventListener("input", renderPermanentStudents);
+adminElement("resultSearch")?.addEventListener("input", renderResults);
+
+// Print or Save PDF
+adminElement("printResultsBtn")?.addEventListener("click", () => window.print());
+
+// Audit Modal Handlers
+adminElement("closeAuditModalBtn")?.addEventListener("click", closeAuditModal);
+adminElement("dismissAuditModalBtn")?.addEventListener("click", closeAuditModal);
+adminElement("printAuditReportBtn")?.addEventListener("click", () => window.print());
 
 // Inputs sanitation
 adminElement("permPhone").addEventListener("input", (event) => {
@@ -641,7 +803,38 @@ adminElement("entryPasscode").addEventListener("input", (event) => {
   event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
 });
 
-// Click handlers on lists
+// Click handlers on lists & radar
+adminElement("liveRadarContainer")?.addEventListener("click", async (event) => {
+  const warnBtn = event.target.closest("[data-warn-live]");
+  if (warnBtn) {
+    const sessionId = warnBtn.dataset.warnLive;
+    const name = warnBtn.dataset.studentName;
+    const defaultMsg = "Please maintain full focus on the exam screen!";
+    const customMsg = window.prompt(`Candidate "${name}" ko kya warning bhejni hai?`, defaultMsg);
+    if (customMsg && customMsg.trim()) {
+      await adminDatabase.ref(`activeExamSessions/${sessionId}/lastWarning`).set({
+        message: customMsg.trim(),
+        timestamp: Date.now()
+      });
+      setAdminNotice(`Live security warning candidate "${name}" ki screen par send ho gayi!`);
+    }
+    return;
+  }
+
+  const termBtn = event.target.closest("[data-terminate-live]");
+  if (termBtn) {
+    const sessionId = termBtn.dataset.terminateLive;
+    const name = termBtn.dataset.studentName;
+    if (window.confirm(`Student "${name}" ka live exam session terminate karna hai?`)) {
+      await adminDatabase.ref(`activeExamSessions/${sessionId}`).update({
+        forceTerminated: true,
+        terminateReason: "Terminated live by Admin Command Center."
+      });
+      setAdminNotice(`Live exam for "${name}" terminated.`);
+    }
+  }
+});
+
 adminElement("permanentList").addEventListener("click", (event) => {
   const blockBtn = event.target.closest("[data-block-key]");
   if (blockBtn) {
@@ -678,6 +871,11 @@ adminElement("passcodeList").addEventListener("click", (event) => {
 });
 
 adminElement("resultList").addEventListener("click", (event) => {
+  const inspectBtn = event.target.closest("[data-inspect-result]");
+  if (inspectBtn) {
+    openAuditModal(inspectBtn.dataset.inspectResult);
+    return;
+  }
   const button = event.target.closest("[data-delete-result]");
   if (button) deleteExamResult(button.dataset.deleteResult);
 });

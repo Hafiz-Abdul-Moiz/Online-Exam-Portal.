@@ -21,6 +21,7 @@ function buildQuestionBank() {
     ["Form control ke saath label connect karne wala element kaunsa hai?", ["<label>", "<formlabel>", "<caption>", "<field>"], 0],
     ["JavaScript ke saath graphics draw karne wala element kaunsa hai?", ["<draw>", "<canvas>", "<svg-js>", "<paint>"], 1]
   ].map(([question, options, answer]) => ({ subject: "HTML", question, options, answer }));
+
   const css = [
     ["Text ka color change karne wali property kaunsi hai?", ["font-color", "color", "text-color", "foreground"], 1],
     ["Flex formatting context banane wala display mode kaunsa hai?", ["display: flex", "position: flex", "layout: flex", "flex: display"], 0],
@@ -43,6 +44,7 @@ function buildQuestionBank() {
     ["Transparency control karne wali property kaunsi hai?", ["alpha", "opacity", "transparency", "visible"], 1],
     ["Har element ko target karne wala selector kaunsa hai?", ["all", "#", ".", "*"], 3]
   ].map(([question, options, answer]) => ({ subject: "CSS", question, options, answer }));
+
   const javascript = [
     ["Block-scoped variable declare karne wala keyword kaunsa hai?", ["var", "let", "define", "value"], 1],
     ["JSON text ko object mein convert karne wala method kaunsa hai?", ["JSON.parse", "JSON.stringify", "JSON.object", "parse.JSON"], 0],
@@ -65,6 +67,7 @@ function buildQuestionBank() {
     ["typeof null ka result kis type ka hota hai?", ["null", "object", "undefined", "empty"], 1],
     ["Exceptions handle karne wali statement kaunsi hai?", ["try...catch", "handle...error", "safe...catch", "test...except"], 0]
   ].map(([question, options, answer]) => ({ subject: "JavaScript", question, options, answer }));
+
   return [...html, ...css, ...javascript];
 }
 
@@ -72,10 +75,13 @@ const examElement = (id) => document.getElementById(id);
 const EXAM_SUBJECTS = ["HTML", "CSS", "JavaScript"];
 const EXAM_MINUTES = 30;
 const SESSION_KEY = "skilltester_session";
+
 const state = {
   exam: "All Subjects",
   questions: [],
   answers: [],
+  flagged: {},
+  activeFilter: "all",
   questionIndex: 0,
   secondsLeft: EXAM_MINUTES * 60,
   timerId: null,
@@ -115,6 +121,8 @@ function startExam(exam) {
     return;
   }
   state.answers = Array(state.questions.length).fill(null);
+  state.flagged = {};
+  state.activeFilter = "all";
   state.questionIndex = 0;
   state.secondsLeft = EXAM_MINUTES * 60;
   state.examActive = true;
@@ -124,11 +132,13 @@ function startExam(exam) {
   document.body.classList.add("exam-running");
   examElement("liveExamView").hidden = false;
   examElement("timer").classList.remove("timer-warning");
+
   window.parent.postMessage({
     type: "skilltester:exam-started",
     questionCount: state.questions.length
   }, "*");
   renderQuestion();
+
   const deadline = Date.now() + EXAM_MINUTES * 60 * 1000;
   const updateTimer = () => {
     state.secondsLeft = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
@@ -148,21 +158,40 @@ function finishExam(reason, cheating = false) {
   state.examActive = false;
   window.clearInterval(state.timerId);
   sessionStorage.removeItem(SESSION_KEY);
+
+  const subjectBreakdown = {};
+  EXAM_SUBJECTS.forEach((subj) => {
+    const subjQuestions = state.questions.map((q, idx) => ({ ...q, originalIndex: idx })).filter((q) => q.subject === subj);
+    if (subjQuestions.length > 0) {
+      const correct = subjQuestions.reduce((acc, q) => {
+        return acc + (state.answers[q.originalIndex] === q.answer ? 1 : 0);
+      }, 0);
+      subjectBreakdown[subj] = {
+        correct,
+        total: subjQuestions.length,
+        percentage: Math.round((correct / subjQuestions.length) * 100)
+      };
+    }
+  });
+
   window.parent.postMessage({
     type: "skilltester:exam-finished",
     reason,
     cheating,
     correctAnswers: calculateExamScore(),
     questionCount: state.questions.length,
+    subjectBreakdown,
     answerReview: state.questions.map((question, index) => ({
       subject: question.subject,
       question: question.question,
       selectedAnswer: Number.isInteger(state.answers[index])
         ? `${String.fromCharCode(65 + state.answers[index])}. ${question.options[state.answers[index]]}`
         : null,
-      correctAnswer: `${String.fromCharCode(65 + question.answer)}. ${question.options[question.answer]}`
+      correctAnswer: `${String.fromCharCode(65 + question.answer)}. ${question.options[question.answer]}`,
+      isCorrect: state.answers[index] === question.answer
     }))
   }, "*");
+
   document.body.classList.remove("exam-running");
   examElement("liveExamView").hidden = true;
 }
@@ -187,18 +216,62 @@ function renderSubjectTabs() {
   });
 }
 
+function updateQuestionCounts() {
+  const total = state.questions.length;
+  const answered = state.answers.filter((a) => a !== null).length;
+  const flagged = Object.values(state.flagged).filter(Boolean).length;
+  const unattempted = total - answered;
+
+  const countAll = examElement("countAll");
+  const countAnswered = examElement("countAnswered");
+  const countFlagged = examElement("countFlagged");
+  const countUnattempted = examElement("countUnattempted");
+
+  if (countAll) countAll.textContent = String(total);
+  if (countAnswered) countAnswered.textContent = String(answered);
+  if (countFlagged) countFlagged.textContent = String(flagged);
+  if (countUnattempted) countUnattempted.textContent = String(unattempted);
+}
+
 function renderQuestionMap(subjectQuestions) {
   const map = examElement("questionMap");
   map.replaceChildren();
-  subjectQuestions.forEach((questionIndex, localIndex) => {
+
+  let displayIndices = subjectQuestions;
+  if (state.activeFilter === "answered") {
+    displayIndices = subjectQuestions.filter((idx) => state.answers[idx] !== null);
+  } else if (state.activeFilter === "flagged") {
+    displayIndices = subjectQuestions.filter((idx) => state.flagged[idx] === true);
+  } else if (state.activeFilter === "unattempted") {
+    displayIndices = subjectQuestions.filter((idx) => state.answers[idx] === null);
+  }
+
+  if (displayIndices.length === 0) {
+    const emptyNotice = document.createElement("p");
+    emptyNotice.className = "modal-copy";
+    emptyNotice.style.margin = "4px 0";
+    emptyNotice.textContent = `No questions found in "${state.activeFilter}" filter.`;
+    map.appendChild(emptyNotice);
+    return;
+  }
+
+  displayIndices.forEach((questionIndex) => {
+    const localIndex = subjectQuestions.indexOf(questionIndex);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "question-map-button";
     button.textContent = String(localIndex + 1);
     button.setAttribute("aria-label", `Question ${localIndex + 1}`);
-    button.classList.toggle("answered", state.answers[questionIndex] !== null);
-    button.classList.toggle("current", questionIndex === state.questionIndex);
-    if (questionIndex === state.questionIndex) button.setAttribute("aria-current", "step");
+
+    const isAnswered = state.answers[questionIndex] !== null;
+    const isFlagged = state.flagged[questionIndex] === true;
+    const isCurrent = questionIndex === state.questionIndex;
+
+    button.classList.toggle("answered", isAnswered);
+    button.classList.toggle("flagged", isFlagged);
+    button.classList.toggle("current", isCurrent);
+
+    if (isCurrent) button.setAttribute("aria-current", "step");
     button.addEventListener("click", () => {
       state.questionIndex = questionIndex;
       renderQuestion();
@@ -209,11 +282,13 @@ function renderQuestionMap(subjectQuestions) {
 
 function renderQuestion() {
   const current = state.questions[state.questionIndex];
+  if (!current) return;
   const subjectQuestions = state.questions.reduce((indices, question, index) => {
     if (question.subject === current.subject) indices.push(index);
     return indices;
   }, []);
   const localIndex = subjectQuestions.indexOf(state.questionIndex);
+
   examElement("subjectBadge").textContent = current.subject;
   examElement("questionNumber").textContent = `${current.subject} · Question ${localIndex + 1} of ${subjectQuestions.length} (Overall ${state.questionIndex + 1} of ${state.questions.length})`;
   examElement("questionTitle").textContent = current.question;
@@ -221,19 +296,31 @@ function renderQuestion() {
   examElement("timer").textContent = formatTime(state.secondsLeft);
   const answeredCount = state.answers.filter((answer) => answer !== null).length;
   examElement("questionProgress").style.width = `${(answeredCount / state.questions.length) * 100}%`;
+
+  const flagBtn = examElement("flagQuestionBtn");
+  const flagText = examElement("flagBtnText");
+  const isFlagged = state.flagged[state.questionIndex] === true;
+  flagBtn.classList.toggle("flagged", isFlagged);
+  flagText.textContent = isFlagged ? "Flagged for Review (★)" : "Flag for Review";
+
   if (state.examActive) {
     window.parent.postMessage({
       type: "skilltester:exam-progress",
       correctAnswers: calculateExamScore(),
-      questionCount: state.questions.length
+      questionCount: state.questions.length,
+      currentQuestion: state.questionIndex + 1,
+      secondsLeft: state.secondsLeft
     }, "*");
   }
+
+  updateQuestionCounts();
   renderSubjectTabs();
   [...examElement("subjectTabs").children].forEach((button) => {
     button.classList.toggle("active", button.textContent === current.subject);
     if (button.textContent === current.subject) button.setAttribute("aria-current", "true");
     else button.removeAttribute("aria-current");
   });
+
   renderQuestionMap(subjectQuestions);
   examElement("previousQuestion").disabled = state.questionIndex === 0;
   examElement("nextQuestion").disabled = state.questionIndex === state.questions.length - 1;
@@ -243,7 +330,7 @@ function renderQuestion() {
   const selectedAnswer = state.answers[state.questionIndex];
   const answerFeedback = examElement("answerFeedback");
   answerFeedback.textContent = "";
-  answerFeedback.classList.remove("correct-answer-feedback", "incorrect-answer-feedback");
+
   current.options.forEach((optionText, optionIndex) => {
     const button = document.createElement("button");
     button.className = "option";
@@ -261,7 +348,7 @@ function renderQuestion() {
     options.appendChild(button);
   });
   if (selectedAnswer !== null) {
-    answerFeedback.textContent = "Answer locked. You can still navigate to other questions.";
+    answerFeedback.textContent = "Answer locked. You can navigate freely or review other questions.";
   }
 }
 
@@ -272,16 +359,71 @@ function calculateExamScore() {
   }, 0);
 }
 
-function terminateExam(reason) {
-  if (state.examActive) finishExam(reason, true);
-}
-
 function goToQuestion(direction) {
   const nextIndex = state.questionIndex + direction;
   if (nextIndex < 0 || nextIndex >= state.questions.length) return;
   state.questionIndex = nextIndex;
   renderQuestion();
 }
+
+examElement("flagQuestionBtn").addEventListener("click", () => {
+  if (!state.examActive) return;
+  state.flagged[state.questionIndex] = !state.flagged[state.questionIndex];
+  renderQuestion();
+});
+
+const filterButtons = [
+  { id: "filterAll", filter: "all" },
+  { id: "filterAnswered", filter: "answered" },
+  { id: "filterFlagged", filter: "flagged" },
+  { id: "filterUnattempted", filter: "unattempted" }
+];
+
+filterButtons.forEach(({ id, filter }) => {
+  examElement(id)?.addEventListener("click", () => {
+    state.activeFilter = filter;
+    filterButtons.forEach(({ id: btnId }) => {
+      examElement(btnId)?.classList.toggle("active", btnId === id);
+    });
+    renderQuestion();
+  });
+});
+
+const scratchpadDrawer = examElement("scratchpadDrawer");
+const scratchpadText = examElement("scratchpadText");
+const scratchpadSavedNotice = examElement("scratchpadSavedNotice");
+
+examElement("toggleScratchpadBtn")?.addEventListener("click", () => {
+  scratchpadDrawer.classList.toggle("hidden");
+  if (!scratchpadDrawer.classList.contains("hidden")) {
+    scratchpadText.focus();
+  }
+});
+examElement("closeScratchpadBtn")?.addEventListener("click", () => {
+  scratchpadDrawer.classList.add("hidden");
+});
+scratchpadText?.addEventListener("input", (e) => {
+  try {
+    sessionStorage.setItem("skilltester_scratchpad", e.target.value);
+    if (scratchpadSavedNotice) {
+      scratchpadSavedNotice.textContent = "Saved";
+      scratchpadSavedNotice.style.opacity = "1";
+    }
+  } catch (err) {}
+});
+examElement("clearScratchpadBtn")?.addEventListener("click", () => {
+  if (scratchpadText) scratchpadText.value = "";
+  try { sessionStorage.removeItem("skilltester_scratchpad"); } catch (e) {}
+});
+
+try {
+  const savedNotes = sessionStorage.getItem("skilltester_scratchpad");
+  if (savedNotes && scratchpadText) scratchpadText.value = savedNotes;
+} catch (e) {}
+
+examElement("dismissWarningBtn")?.addEventListener("click", () => {
+  examElement("adminWarningBanner").classList.add("hidden");
+});
 
 examElement("beginExamButton")?.addEventListener("click", () => {
   if (window.top === window) {
@@ -294,9 +436,15 @@ examElement("previousQuestion").addEventListener("click", () => goToQuestion(-1)
 examElement("nextQuestion").addEventListener("click", () => goToQuestion(1));
 examElement("finishExamButton").addEventListener("click", () => {
   const unanswered = state.answers.filter((answer) => answer === null).length;
-  const confirmation = unanswered
-    ? `${unanswered} question(s) are unanswered and will count as incorrect. Finish the exam?`
-    : "Finish and submit your exam?";
+  const flagged = Object.values(state.flagged).filter(Boolean).length;
+  let confirmation = "Finish and submit your exam?";
+  if (unanswered > 0 && flagged > 0) {
+    confirmation = `You have ${unanswered} unanswered question(s) and ${flagged} question(s) flagged for review.\nSubmit exam anyway?`;
+  } else if (unanswered > 0) {
+    confirmation = `${unanswered} question(s) are unanswered and will count as incorrect.\nFinish the exam?`;
+  } else if (flagged > 0) {
+    confirmation = `You have ${flagged} question(s) flagged for review.\nFinish and submit now?`;
+  }
   if (window.confirm(confirmation)) finishExam("Exam completed.");
 });
 
@@ -304,9 +452,16 @@ window.addEventListener("message", (event) => {
   if (event.source !== window.parent || !event.data || typeof event.data !== "object") return;
   if (event.data.type === "skilltester:start-exam") startExam(event.data.exam);
   if (event.data.type === "skilltester:terminate-exam") finishExam(event.data.reason, true);
+  if (event.data.type === "skilltester:admin-warning") {
+    const banner = examElement("adminWarningBanner");
+    const text = examElement("adminWarningText");
+    if (banner && text) {
+      text.textContent = `Warning from Admin Command Center: ${event.data.warning || "Please maintain full focus on the exam arena."}`;
+      banner.classList.remove("hidden");
+    }
+  }
 });
 
-// 🔥 COMPLETE KEYBOARD LOCK: When exam is running, NO key or shortcut works!
 const blockKeyboard = (event) => {
   if (!state.examActive) return;
   event.preventDefault();
@@ -318,7 +473,6 @@ document.addEventListener("keydown", blockKeyboard, true);
 document.addEventListener("keypress", blockKeyboard, true);
 document.addEventListener("keyup", blockKeyboard, true);
 
-// 🔥 MOUSE LOCK: ONLY Mouse Left Click (button === 0) works!
 const blockNonLeftClick = (event) => {
   if (!state.examActive) return;
   if (event.button !== 0) {

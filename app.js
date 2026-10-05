@@ -27,7 +27,10 @@ const state = {
   examActive: false,
   antiCheatBound: false,
   finishing: false,
-  liveBlockListener: null
+  liveBlockListener: null,
+  activeSessionId: null,
+  activeSessionListener: null,
+  lastWarningSeen: 0
 };
 let audioContext = null;
 
@@ -107,232 +110,203 @@ function isMobileDevice() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
-// -------------------------------------------------------------
-// STRICT SECURITY: KEYBOARD COMPLETE LOCK & ONLY MOUSE LEFT CLICK
-// -------------------------------------------------------------
 function bindSecurityDefaults() {
-  // Prevent contextmenu right-click anytime during exam
   document.addEventListener("contextmenu", (event) => {
     if (state.examActive) {
       event.preventDefault();
       event.stopPropagation();
-      return false;
     }
   }, true);
 
-  // Prevent text selection during exam
-  document.addEventListener("selectstart", (event) => {
-    if (state.examActive && !event.target.matches("input, textarea")) {
-      event.preventDefault();
-    }
-  });
+  const blockKeyboard = (event) => {
+    if (!state.examActive) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    return false;
+  };
+  window.addEventListener("keydown", blockKeyboard, true);
+  window.addEventListener("keypress", blockKeyboard, true);
+  window.addEventListener("keyup", blockKeyboard, true);
 
-  document.addEventListener("dragstart", (event) => {
+  const blockNonLeftClick = (event) => {
+    if (!state.examActive) return;
+    if (event.button !== 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return false;
+    }
+  };
+  window.addEventListener("mousedown", blockNonLeftClick, true);
+  window.addEventListener("mouseup", blockNonLeftClick, true);
+  window.addEventListener("auxclick", blockNonLeftClick, true);
+  window.addEventListener("selectstart", (event) => {
     if (state.examActive) event.preventDefault();
-  });
-
-  // 🔥 KEYBOARD LOCK: When exam is active, ALL keys and shortcuts are blocked!
-  const blockKeys = (event) => {
-    if (state.examActive) {
-      event.preventDefault();
-      event.stopPropagation();
-      return false;
-    }
-  };
-  window.addEventListener("keydown", blockKeys, true);
-  window.addEventListener("keypress", blockKeys, true);
-  window.addEventListener("keyup", blockKeys, true);
-
-  // 🔥 MOUSE LOCK: ONLY Mouse Left Click (button === 0) is allowed!
-  const blockOtherMouse = (event) => {
-    if (state.examActive && event.button !== 0) {
-      event.preventDefault();
-      event.stopPropagation();
-      return false;
-    }
-  };
-  window.addEventListener("mousedown", blockOtherMouse, true);
-  window.addEventListener("mouseup", blockOtherMouse, true);
-  window.addEventListener("auxclick", blockOtherMouse, true);
+  }, true);
+  window.addEventListener("dragstart", (event) => {
+    if (state.examActive) event.preventDefault();
+  }, true);
 }
 
 function bindAntiCheat() {
   if (state.antiCheatBound) return;
   state.antiCheatBound = true;
+
+  window.addEventListener("blur", () => {
+    if (state.examActive && !state.finishing) {
+      terminateActiveExam("Window focus lost or candidate switched away from exam.");
+    }
+  });
+
   document.addEventListener("visibilitychange", () => {
-    if (state.examActive && document.hidden) terminateActiveExam("Browser tab or window focus changed.");
+    if (document.hidden && state.examActive && !state.finishing) {
+      terminateActiveExam("Tab switch or background mode detected.");
+    }
   });
-  window.addEventListener("pagehide", () => {
-    if (state.examActive) terminateActiveExam("The exam page was hidden or closed.");
-  });
+
   document.addEventListener("fullscreenchange", () => {
-    if (state.examActive && !document.fullscreenElement) terminateActiveExam("Fullscreen mode was exited.");
+    if (!document.fullscreenElement && state.examActive && !state.finishing) {
+      terminateActiveExam("Fullscreen mode was exited.");
+    }
   });
-  if (isMobileDevice()) {
-    document.addEventListener("touchmove", (event) => {
-      if (state.examActive) event.preventDefault();
-    }, { passive: false });
-  }
 }
 
-async function requestExamFullscreen() {
-  if (document.fullscreenElement) return;
-  if (!document.documentElement.requestFullscreen) {
-    throw new Error("This browser does not support secure fullscreen exams. Please use an up-to-date desktop browser.");
-  }
-  try { await document.documentElement.requestFullscreen(); }
-  catch (error) { throw new Error("Fullscreen permission is required before the exam can start."); }
-  if (!document.fullscreenElement) throw new Error("Fullscreen could not be activated. Please allow fullscreen and try again.");
+function requestExamFullscreen() {
+  if (document.fullscreenElement || isMobileDevice()) return Promise.resolve();
+  const root = document.documentElement;
+  const method = root.requestFullscreen || root.webkitRequestFullscreen || root.msRequestFullscreen;
+  return method ? method.call(root).catch(() => undefined) : Promise.resolve();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  }[character]));
+}
+
+function sanitizeKey(key) {
+  return String(key ?? "").replace(/[.#$\[\]]/g, "_").trim().toUpperCase();
 }
 
 function openRegistration() {
+  if (state.examActive) {
+    toast("Exam chal raha hai.", "info");
+    return;
+  }
   $("registrationModal").classList.add("open");
-  $("fullName").focus();
+  $("registrationForm").reset();
+  $("registrationError").textContent = "";
+  $("studentId").focus();
 }
-function closeRegistration() { $("registrationModal").classList.remove("open"); }
+
+function closeRegistration() {
+  $("registrationModal").classList.remove("open");
+}
 
 function openAdminPanel() {
-  if (state.examActive) { toast("Exam ke dauran Admin Panel allowed nahi hai.", "danger"); return; }
+  if (state.examActive) {
+    toast("Exam chalte hue Admin panel kholna mana hai.", "danger");
+    return;
+  }
   $("adminModal").classList.add("open");
 }
 
 function closeAdminPanel() {
-  $("adminPanelFrame").contentWindow.postMessage({ type: "skilltester:admin-closed" }, "*");
   $("adminModal").classList.remove("open");
+  $("adminPanelFrame")?.contentWindow?.postMessage({ type: "skilltester:admin-closed" }, "*");
 }
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]));
-}
-
-// -------------------------------------------------------------
-// VERIFY PASSCODE: PERMANENT LIFETIME ID (999990) & ONE-TIME CODE
-// -------------------------------------------------------------
 async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
   const adminSnapshot = await database.ref("adminCode").once("value");
-  const admin = adminSnapshot.val() || {};
+  const adminData = adminSnapshot.val() || {};
+  if (adminData.isEnabled === false) throw new Error("Portal administrator ne exam access band kar di hai.");
 
-  if (admin.isEnabled === false) {
-    throw new Error("Exam access is temporarily disabled by the administrator.");
-  }
+  const studentKey = sanitizeKey(studentId);
 
-  // 1. FIRST CHECK: PERMANENT LIFETIME ID IN FIREBASE
-  const studentKey = String(studentId).trim().toUpperCase().replace(/[.#$\[\]]/g, "_");
-  const permSnap = await database.ref(`permanentStudents/${studentKey}`).once("value");
-  const permStudent = permSnap.val();
+  if (code === UNIVERSAL_LIFETIME_PASSWORD) {
+    const permSnap = await database.ref(`permanentStudents/${studentKey}`).once("value");
+    const permData = permSnap.val();
 
-  if (permStudent) {
-    // 🔥 THE TWIST: Check if ID is blocked from admin side
-    if (permStudent.isBlocked === true) {
+    if (!permData) {
+      throw new Error(`Student ID "${studentId}" registered nahi hai! Pehle Admin panel se Form 2 mein Permanent ID create karein.`);
+    }
+
+    if (permData.isBlocked === true) {
       throw new Error("Your ID is blocked from admin side");
     }
 
-    // Check Universal Lifetime Password (999990)
-    const expectedPass = String(permStudent.password || UNIVERSAL_LIFETIME_PASSWORD).trim();
-    if (code !== expectedPass && code !== UNIVERSAL_LIFETIME_PASSWORD) {
-      throw new Error("Incorrect lifetime password. Use 999990.");
+    if (permData.studentName.trim().toLowerCase() !== fullName.trim().toLowerCase()) {
+      throw new Error(`Student name match nahi hua! Registered name: "${permData.studentName}".`);
+    }
+    if (permData.fatherName.trim().toLowerCase() !== fatherName.trim().toLowerCase()) {
+      throw new Error(`Father name match nahi hua! Registered father: "${permData.fatherName}".`);
+    }
+    if (permData.phone.trim() !== phone.trim()) {
+      throw new Error(`Mobile number match nahi hua! Registered: "${permData.phone}".`);
     }
 
-    // Check student details match registered record
-    if (String(permStudent.studentName).trim().replace(/\s+/g, " ").toLowerCase() !== fullName.trim().replace(/\s+/g, " ").toLowerCase()) {
-      throw new Error("Student Name does not match registered record for this ID.");
-    }
-    if (String(permStudent.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() !== fatherName.trim().replace(/\s+/g, " ").toLowerCase()) {
-      throw new Error("Father Name does not match registered record for this ID.");
-    }
-    if (String(permStudent.phone || "").trim() !== phone.trim()) {
-      throw new Error("Mobile number does not match registered record for this ID.");
-    }
-
-    // Permanent student verified! (Never displays "Candidate", exact name saved)
-    state.exam = permStudent.exam || "All Subjects";
+    state.exam = permData.exam || "All Subjects";
     return {
-      studentId: permStudent.studentId || studentId,
-      fullName: permStudent.studentName || fullName,
-      studentName: permStudent.studentName || fullName,
-      fatherName: permStudent.fatherName || fatherName,
-      phone: permStudent.phone || phone,
-      exam: state.exam,
+      code: UNIVERSAL_LIFETIME_PASSWORD,
+      studentId: permData.studentId,
+      studentName: permData.studentName,
+      fullName: permData.studentName,
+      fatherName: permData.fatherName,
+      phone: permData.phone,
+      exam: permData.exam || "All Subjects",
       isPermanent: true,
       studentKey
     };
   }
 
-  // 2. SECOND CHECK: ONE-TIME PASSCODE
-  const passcodeRef = database.ref(`passcodes/${code}`);
-  const snapshot = await passcodeRef.once("value");
-  const passcode = snapshot.val();
-  if (!passcode || passcode.isUsed !== false) throw new Error("This passcode is invalid, expired, or has already been used.");
-  if (!passcode.studentId || !passcode.studentName || !passcode.exam) {
-    throw new Error("This older code needs to be assigned to a student and exam by the administrator first.");
+  const codeRef = database.ref(`passcodes/${code}`);
+  let matchedEntry = null;
+  const result = await codeRef.transaction((current) => {
+    if (!current) return;
+    if (current.isUsed === true) return;
+    if (Number(current.expiresAt || Infinity) <= Date.now()) return;
+
+    if (current.studentId && current.studentId.trim().toUpperCase() !== studentId.trim().toUpperCase()) return;
+    if (current.studentName && current.studentName.trim().toLowerCase() !== fullName.trim().toLowerCase()) return;
+    if (current.fatherName && current.fatherName.trim().toLowerCase() !== fatherName.trim().toLowerCase()) return;
+    if (current.phone && current.phone.trim() !== phone.trim()) return;
+
+    matchedEntry = {
+      code,
+      studentId: current.studentId || studentId,
+      studentName: current.studentName || fullName,
+      fullName: current.studentName || fullName,
+      fatherName: current.fatherName || fatherName,
+      phone: current.phone || phone,
+      exam: current.exam || "All Subjects",
+      isPermanent: false
+    };
+
+    return {
+      ...current,
+      studentId: matchedEntry.studentId,
+      studentName: matchedEntry.studentName,
+      fatherName: matchedEntry.fatherName,
+      phone: matchedEntry.phone,
+      exam: matchedEntry.exam,
+      isUsed: true,
+      usedAt: firebase.database.ServerValue.TIMESTAMP,
+      status: "used"
+    };
+  });
+
+  if (!result.committed || !matchedEntry) {
+    throw new Error("Yeh passcode galat hai, pehle use ho chuka hai, ya details match nahi kar rahi.");
   }
-  if (!["All Subjects", "HTML", "CSS", "JavaScript"].includes(passcode.exam)) {
-    throw new Error("The exam assigned to this code is invalid. Ask the administrator to issue a corrected code.");
-  }
-  if (Number(passcode.expiresAt || Infinity) <= Date.now()) throw new Error("This passcode has expired. Ask the administrator for a new code.");
-  if (String(passcode.studentId).trim().toUpperCase() !== studentId.trim().toUpperCase()) {
-    throw new Error("Student ID does not match the student assigned to this passcode.");
-  }
-  if (String(passcode.studentName).trim().replace(/\s+/g, " ").toLowerCase() !== fullName.trim().replace(/\s+/g, " ").toLowerCase()) {
-    throw new Error("Student name does not match the name registered by the administrator.");
-  }
-  if (String(passcode.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() !== fatherName.trim().replace(/\s+/g, " ").toLowerCase()) {
-    throw new Error("Father name does not match the student record created by the administrator.");
-  }
-  if (String(passcode.phone || "").trim() !== phone) {
-    throw new Error("Mobile number does not match the student record created by the administrator.");
-  }
-  
-  let result;
-  try {
-    result = await passcodeRef.transaction((current) => {
-      if (!current) return null;
-      if (current.isUsed !== false ||
-          String(current.studentId || "").trim().toUpperCase() !== String(passcode.studentId).trim().toUpperCase() ||
-          current.exam !== passcode.exam ||
-          String(current.studentName || "").trim().replace(/\s+/g, " ").toLowerCase() !==
-            String(passcode.studentName).trim().replace(/\s+/g, " ").toLowerCase() ||
-          String(current.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() !==
-            String(passcode.fatherName || "").trim().replace(/\s+/g, " ").toLowerCase() ||
-          String(current.phone || "").trim() !== String(passcode.phone || "").trim() ||
-          Number(current.expiresAt || Infinity) <= Date.now()) return current;
-      return {
-        ...current,
-        isUsed: true
-      };
-    });
-  } catch (error) {
-    if (String(error.code || error.message || "").includes("PERMISSION_DENIED")) {
-      throw new Error("Firebase rejected the one-time-code update. Check Realtime Database write rules for passcodes/{code}.");
-    }
-    throw new Error(`Could not claim this code from Firebase: ${error.message || "database request failed"}`);
-  }
-  if (!result.committed) {
-    const latest = (await passcodeRef.once("value")).val();
-    if (!latest) throw new Error("This passcode no longer exists. Ask the administrator to issue a new code.");
-    if (latest.isUsed === true) throw new Error("This passcode has already been used.");
-    if (Number(latest.expiresAt || Infinity) <= Date.now()) throw new Error("This passcode has expired. Ask the administrator for a new code.");
-    if (String(latest.studentId || "").trim().toUpperCase() !== studentId.trim().toUpperCase()) {
-      throw new Error("This passcode was reassigned to a different student. Ask the administrator to verify the entry.");
-    }
-    throw new Error("Firebase did not save the one-time-code claim. Check Realtime Database write rules and try again.");
-  }
-  
-  state.exam = passcode.exam;
-  return {
-    studentId: passcode.studentId || studentId,
-    fullName: passcode.studentName || fullName,
-    studentName: passcode.studentName || fullName,
-    fatherName: passcode.fatherName || fatherName,
-    phone: passcode.phone || phone,
-    exam: passcode.exam,
-    isPermanent: false
-  };
+
+  state.exam = matchedEntry.exam;
+  return matchedEntry;
 }
 
 async function submitRegistration(event) {
   event.preventDefault();
-  const studentId = $("studentId").value.trim();
+  const studentId = $("studentId").value.trim().toUpperCase();
   const fullName = $("fullName").value.trim();
   const fatherName = $("fatherName").value.trim();
   const phone = $("candidatePhone").value.trim();
@@ -355,7 +329,34 @@ async function submitRegistration(event) {
     await runLoadingSequence();
     hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
 
-    // LIVE BLOCK LISTENER: If student is inside exam and Admin blocks them, terminate exam instantly!
+    state.activeSessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const sessionRef = database.ref(`activeExamSessions/${state.activeSessionId}`);
+    await sessionRef.set({
+      studentId: assignedEntry.studentId,
+      studentName: assignedEntry.fullName,
+      fullName: assignedEntry.fullName,
+      exam: state.exam,
+      currentQuestion: 1,
+      secondsLeft: 1800,
+      isPermanent: assignedEntry.isPermanent,
+      startedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    state.activeSessionListener = sessionRef.on("value", (snap) => {
+      const sess = snap.val();
+      if (!sess) return;
+      if (sess.forceTerminated === true && state.examActive) {
+        terminateActiveExam(sess.terminateReason || "Terminated live by Admin Command Center.");
+      }
+      if (sess.lastWarning && sess.lastWarning.timestamp > state.lastWarningSeen && state.examActive) {
+        state.lastWarningSeen = sess.lastWarning.timestamp;
+        $("examCardFrame").contentWindow.postMessage({
+          type: "skilltester:admin-warning",
+          warning: sess.lastWarning.message
+        }, "*");
+      }
+    });
+
     if (assignedEntry.isPermanent && assignedEntry.studentKey) {
       if (state.liveBlockListener) state.liveBlockListener.off();
       state.liveBlockListener = database.ref(`permanentStudents/${assignedEntry.studentKey}/isBlocked`);
@@ -385,8 +386,8 @@ function runLoadingSequence() {
   $("loaderScreen").classList.add("open");
   return new Promise((resolve) => {
     window.setTimeout(() => {
-      $("loaderTitle").textContent = "Initializing Anti-Cheating Environment...";
-      $("loaderText").textContent = "Locking keyboard and preparing secure questions";
+      $("loaderTitle").textContent = "Arming High-Security AI Proctor Guard...";
+      $("loaderText").textContent = "Locking keyboard, isolating display & syncing live telemetrics";
       $("loaderProgress").style.width = "100%";
       document.querySelectorAll(".loader-step")[0]?.classList.remove("active");
       document.querySelectorAll(".loader-step")[1]?.classList.add("active");
@@ -404,6 +405,13 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
   if (state.finishing) return;
   state.finishing = true;
   state.examActive = false;
+
+  if (state.activeSessionId) {
+    if (state.activeSessionListener) database.ref(`activeExamSessions/${state.activeSessionId}`).off();
+    database.ref(`activeExamSessions/${state.activeSessionId}`).remove().catch(() => {});
+    state.activeSessionId = null;
+  }
+
   if (state.liveBlockListener) {
     state.liveBlockListener.off();
     state.liveBlockListener = null;
@@ -426,9 +434,16 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
   sessionStorage.removeItem(SESSION_KEY);
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
   const finalMarks = calculateMarks(state.score);
+
   if (cheating || finalMarks < PASSING_SCORE) {
-    saveExamResult(finalMarks, cheating ? "TERMINATED" : "FAILED", reason); playSound("failure"); renderFailure(reason, cheating);
-  } else { saveExamResult(finalMarks, "PASSED", reason); playSound("success"); renderResult(); }
+    saveExamResult(finalMarks, cheating ? "TERMINATED" : "FAILED", reason, result);
+    playSound("failure");
+    renderFailure(reason, cheating);
+  } else {
+    saveExamResult(finalMarks, "PASSED", reason, result);
+    playSound("success");
+    renderResult();
+  }
 }
 
 function terminateActiveExam(reason) {
@@ -437,13 +452,12 @@ function terminateActiveExam(reason) {
   finalizeExamResult(reason, true);
 }
 
-// SAVE EXAM RESULT: ALWAYS saves actual student name (Never "Candidate")
-function saveExamResult(finalMarks, status, reason) {
+function saveExamResult(finalMarks, status, reason, extra = {}) {
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   const studentId = state.candidate?.studentId || "—";
   const isPermanent = state.candidate?.isPermanent === true;
 
-  database.ref("examResults").push({
+  const resultPayload = {
     candidate: {
       studentId: studentId,
       fullName: actualName,
@@ -455,6 +469,8 @@ function saveExamResult(finalMarks, status, reason) {
     },
     studentName: actualName,
     studentId: studentId,
+    fatherName: state.candidate?.fatherName || "—",
+    phone: state.candidate?.phone || "—",
     exam: state.exam,
     marks: finalMarks,
     totalMarks: EXAM_TOTAL_MARKS,
@@ -464,8 +480,12 @@ function saveExamResult(finalMarks, status, reason) {
     reason,
     isPermanent: isPermanent,
     questionCount: state.questionCount,
+    answerReview: state.answerReview || [],
+    subjectBreakdown: extra.subjectBreakdown || {},
     createdAt: firebase.database.ServerValue.TIMESTAMP
-  }).catch(() => undefined);
+  };
+
+  database.ref("examResults").push(resultPayload).catch(() => {});
 }
 
 function renderFailure(reason, cheating) {
@@ -479,7 +499,6 @@ function renderFailure(reason, cheating) {
   $("resultHeading").textContent = cheating ? "Exam Terminated" : "Exam failed: pass mark not reached.";
   $("resultSubtitle").textContent = reason || "Session closed.";
   
-  // Exact student name
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   $("resultName").textContent = actualName;
   $("resultFather").textContent = state.candidate?.fatherName || "—";
@@ -497,7 +516,6 @@ function renderResult() {
   const finalMarks = calculateMarks(state.score);
   const percentage = finalMarks;
 
-  // Exact student name
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   $("resultName").textContent = actualName;
   $("resultFather").textContent = state.candidate?.fatherName || "—";
@@ -606,6 +624,14 @@ window.addEventListener("message", (event) => {
         message.correctAnswers > message.questionCount) return;
     state.score = message.correctAnswers;
     state.questionCount = message.questionCount;
+
+    if (state.activeSessionId) {
+      database.ref(`activeExamSessions/${state.activeSessionId}`).update({
+        currentQuestion: message.currentQuestion || 1,
+        secondsLeft: message.secondsLeft || 1800,
+        score: message.correctAnswers
+      }).catch(() => {});
+    }
   } else if (message.type === "skilltester:exam-finished" && state.examActive) {
     finalizeExamResult(message.reason || "Exam completed.", message.cheating === true, message);
   } else if (message.type === "skilltester:exam-error") {
@@ -621,6 +647,5 @@ document.querySelector('.main-nav a[href="#resultView"]').addEventListener("clic
 $("fullName").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30); });
 $("fatherName").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30); });
 $("candidatePhone").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11); });
-// Input limiter allows both 6-digit one-time code and lifetime passwords:
 $("accessCode").addEventListener("input", (event) => { event.target.value = event.target.value.slice(0, 20); });
 bindSecurityDefaults();

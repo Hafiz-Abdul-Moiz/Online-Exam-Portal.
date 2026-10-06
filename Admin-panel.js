@@ -20,6 +20,7 @@ let permanentStudentsCache = {};
 let resultsCache = {};
 let activeSessionsCache = {};
 let accessEnabled = false;
+let currentMarksheetFilter = "all";
 
 let lastGeneratedCodeData = null;
 
@@ -88,6 +89,7 @@ function beginLiveUpdates() {
   adminDatabase.ref("examResults").limitToLast(100).on("value", (snapshot) => {
     resultsCache = snapshot.val() || {};
     renderResults();
+    renderMarksheetCandidates();
   }, (error) => setAdminNotice(`Exam results could not be loaded: ${error.message}`, true));
 }
 
@@ -120,13 +122,14 @@ function renderLiveRadar() {
   container.innerHTML = entries.map(([sessionId, sess]) => {
     const studentName = sess?.studentName || sess?.fullName || "Candidate";
     const studentId = sess?.studentId || "—";
-    const exam = sess?.exam || "All Subjects";
+    const exam = sess?.exam || "Computer Science Group";
     const currentQ = sess?.currentQuestion || 1;
     const totalQ = sess?.questionCount || 60;
     const secondsLeft = sess?.secondsLeft || 1800;
     const mins = Math.floor(secondsLeft / 60);
     const secs = secondsLeft % 60;
     const timeFormatted = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+    const aiStatus = sess?.aiWarning ? "⚠️ AI Alert" : "🛡️ Clean";
 
     return `
       <div class="radar-student-card">
@@ -136,7 +139,7 @@ function renderLiveRadar() {
             <span>Exam: <strong>${adminEscape(exam)}</strong></span>
             <span>Progress: <strong>Q${currentQ} / ${totalQ}</strong></span>
             <span>Time Left: <strong>${timeFormatted}</strong></span>
-            <span>Security: <strong style="color:#4ade80;">100% Locked</strong></span>
+            <span>AI Sentinel: <strong style="color:#4ade80;">${adminEscape(aiStatus)}</strong></span>
           </div>
         </div>
         <div class="radar-actions">
@@ -178,6 +181,7 @@ function renderPermanentStudents() {
 
   container.innerHTML = filtered.map(([key, item]) => {
     const isBlocked = item?.isBlocked === true;
+    const duration = item?.durationMinutes ? `${item.durationMinutes} Min` : "1 Hour";
     return `
       <article class="perm-row ${isBlocked ? "blocked" : ""}">
         <div class="perm-row-main">
@@ -189,7 +193,8 @@ function renderPermanentStudents() {
           <div class="perm-row-details">
             <span>Father: <strong>${adminEscape(item?.fatherName || "—")}</strong></span>
             <span>Mobile: <strong>${adminEscape(item?.phone || "—")}</strong></span>
-            <span>Exam: <strong>${adminEscape(item?.exam || "All Subjects")}</strong></span>
+            <span>Exam: <strong>${adminEscape(item?.exam || "Computer Science Group")}</strong></span>
+            <span>Duration: <strong>${adminEscape(duration)}</strong></span>
             <span>Lifetime Password: <strong style="color:#facc15;">${UNIVERSAL_LIFETIME_PASSWORD}</strong></span>
           </div>
         </div>
@@ -198,6 +203,7 @@ function renderPermanentStudents() {
             ? `<button class="btn-unblock" type="button" data-unblock-key="${adminEscape(key)}" data-student-id="${adminEscape(item?.studentId || key)}">Unblock ID</button>`
             : `<button class="btn-block" type="button" data-block-key="${adminEscape(key)}" data-student-id="${adminEscape(item?.studentId || key)}">Block ID</button>`
           }
+          <button class="btn-generate-marksheet" type="button" data-quick-marksheet="${adminEscape(item?.studentId || key)}" data-name="${adminEscape(item?.studentName)}" data-father="${adminEscape(item?.fatherName)}" data-exam="${adminEscape(item?.exam || "Computer Science Group")}">👑 Generate Marksheet</button>
           <button class="btn-copy" type="button" data-copy-key="${adminEscape(key)}" title="Copy credentials for student">Copy Info</button>
           <button class="admin-delete" type="button" data-delete-perm="${adminEscape(key)}" data-student-id="${adminEscape(item?.studentId || key)}">Delete</button>
         </div>
@@ -223,10 +229,11 @@ function renderPasscodes() {
     const expired = item?.isUsed === true || Number(item?.expiresAt || Infinity) <= now;
     const available = item?.isUsed === false && !expired;
     const status = expired ? "Expired / used" : assigned && available ? "Available" : "Setup required";
+    const duration = item?.durationMinutes ? `${item.durationMinutes} Min` : "1 Hour";
     return `<article class="admin-row">
       <div class="admin-row-main">
         <strong>${adminEscape(item?.studentName || item?.label || "Student")} · Code: <code style="color:#38bdf8; font-weight:700;">${adminEscape(code)}</code></strong>
-        <small>Student ID: <strong>${adminEscape(item?.studentId || "Not assigned")}</strong> · Father: ${adminEscape(item?.fatherName || "—")} · Mobile: ${adminEscape(item?.phone || "—")} · Exam: ${adminEscape(item?.exam || "Not assigned")}</small>
+        <small>Student ID: <strong>${adminEscape(item?.studentId || "Not assigned")}</strong> · Father: ${adminEscape(item?.fatherName || "—")} · Exam: ${adminEscape(item?.exam || "Computer Science Group")} · Duration: ${adminEscape(duration)}</small>
       </div>
       <div class="admin-row-actions">
         <button class="btn-copy" type="button" data-copy-onetime="${adminEscape(code)}" title="Copy credentials">Copy Info</button>
@@ -296,15 +303,82 @@ function renderResults() {
       <article class="admin-row">
         <div class="admin-row-main">
           <strong>${adminEscape(studentName)} · <span style="color:${isPassed ? "#4ade80" : "#f87171"};">${adminEscape(status)}</span></strong>
-          <small>ID: ${adminEscape(studentId)} · ${adminEscape(result.candidate?.exam || result.exam || "All Subjects")} · Marks: <strong>${adminEscape(result.marks ?? "—")}/100</strong> · ${examType}</small>
+          <small>ID: ${adminEscape(studentId)} · ${adminEscape(result.candidate?.exam || result.exam || "Computer Science Group")} · Marks: <strong>${adminEscape(result.marks ?? "—")}/100</strong> · ${examType}</small>
         </div>
         <div class="admin-row-actions">
+          <button class="btn-generate-marksheet" type="button" data-open-marksheet-key="${adminEscape(key)}">
+            👑 Marksheet
+          </button>
           <button class="btn-inspect" type="button" data-inspect-result="${adminEscape(key)}">
-            🔍 Inspect Answer Sheet
+            🔍 Inspect
           </button>
           <button class="admin-delete" type="button" data-delete-result="${adminEscape(key)}">Delete</button>
         </div>
       </article>`;
+  }).join("");
+}
+
+// 4. VVIP MARKSHEET HUB RENDERER
+function renderMarksheetCandidates() {
+  const container = adminElement("marksheetCandidatesList");
+  if (!container) return;
+
+  const entries = Object.entries(resultsCache).reverse();
+
+  let filtered = entries;
+  if (currentMarksheetFilter === "passed") {
+    filtered = entries.filter(([, r]) => (r.status || "").toUpperCase() === "PASSED");
+  } else if (currentMarksheetFilter === "failed") {
+    filtered = entries.filter(([, r]) => (r.status || "").toUpperCase() === "FAILED");
+  } else if (currentMarksheetFilter === "terminated") {
+    filtered = entries.filter(([, r]) => (r.status || "").toUpperCase() === "TERMINATED");
+  }
+
+  if (!filtered.length) {
+    container.innerHTML = `<p class="modal-copy">Koi student is category (${currentMarksheetFilter}) mein nahi mila.</p>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(([key, r]) => {
+    const studentName = r.candidate?.fullName || r.candidate?.studentName || r.studentName || "Student";
+    const studentId = r.candidate?.studentId || r.studentId || "—";
+    const fatherName = r.candidate?.fatherName || r.fatherName || "—";
+    const marks = r.marks ?? 0;
+    const status = (r.status || "COMPLETED").toUpperCase();
+    const exam = r.candidate?.exam || r.exam || "Computer Science Group";
+    const isPassed = status === "PASSED";
+    const isTerminated = status === "TERMINATED";
+
+    let actionBtn = "";
+    if (isPassed) {
+      actionBtn = `<button class="btn-generate-marksheet" type="button" data-open-marksheet-key="${adminEscape(key)}">🎓 Generate VVIP Marksheet</button>`;
+    } else if (isTerminated) {
+      actionBtn = `<button class="btn-penalty" type="button" data-open-marksheet-key="${adminEscape(key)}">🚨 Disciplinary Penalty Record</button>`;
+    } else {
+      actionBtn = `<button class="btn-remedial" type="button" data-open-marksheet-key="${adminEscape(key)}">📋 View Remedial Notice</button>`;
+    }
+
+    return `
+      <article class="perm-row">
+        <div class="perm-row-main">
+          <div class="perm-row-title">
+            <strong>${adminEscape(studentName)}</strong>
+            <span class="perm-id-badge">${adminEscape(studentId)}</span>
+            <span class="status-pill ${isPassed ? "active" : "blocked"}">${adminEscape(status)}</span>
+          </div>
+          <div class="perm-row-details">
+            <span>Father: <strong>${adminEscape(fatherName)}</strong></span>
+            <span>Marks: <strong style="color:${isPassed ? "#4ade80" : "#f87171"}; font-size:0.95rem;">${marks} / 100</strong></span>
+            <span>Exam: <strong>${adminEscape(exam)}</strong></span>
+            ${r.reason ? `<span>Forensic Note: <em style="color:#f87171;">${adminEscape(r.reason)}</em></span>` : ""}
+          </div>
+        </div>
+        <div class="perm-row-actions">
+          ${actionBtn}
+          <a href="Marksheet.html?resultKey=${encodeURIComponent(key)}" target="_top" class="btn-copy" style="text-decoration:none;">👑 View Marksheet</a>
+        </div>
+      </article>
+    `;
   }).join("");
 }
 
@@ -320,7 +394,7 @@ function openAuditModal(resultKey) {
   const studentId = result.candidate?.studentId || result.studentId || "—";
   const fatherName = result.candidate?.fatherName || result.fatherName || "—";
   const phone = result.candidate?.phone || result.phone || "—";
-  const exam = result.candidate?.exam || result.exam || "All Subjects";
+  const exam = result.candidate?.exam || result.exam || "Computer Science Group";
   const marks = result.marks ?? 0;
   const status = result.status || "COMPLETED";
   const isPermanent = result.candidate?.isPermanent === true || result.isPermanent === true;
@@ -343,35 +417,6 @@ function openAuditModal(resultKey) {
     `;
   }
 
-  let questionsHtml = "";
-  if (answerReview.length > 0) {
-    questionsHtml = `
-      <div class="audit-questions-section">
-        <h4>Detailed Question by Question Review (${answerReview.length} Questions)</h4>
-        ${answerReview.map((q, idx) => {
-          const isCorrect = q.selectedAnswer === q.correctAnswer || q.isCorrect === true;
-          return `
-            <div class="audit-question-card ${isCorrect ? "correct" : "incorrect"}">
-              <div class="audit-q-header">
-                <strong>Q${idx + 1} · ${adminEscape(q.subject || "")}</strong>
-                <span class="pill-verdict ${isCorrect ? "correct" : "incorrect"}">${isCorrect ? "+1 Marks (Correct)" : "0 Marks (Wrong)"}</span>
-              </div>
-              <p class="audit-q-text">${adminEscape(q.question)}</p>
-              <div class="audit-answers-row">
-                <div class="audit-ans-candidate ${isCorrect ? "match" : ""}">
-                  <strong>Candidate Answer:</strong> ${adminEscape(q.selectedAnswer || "Not answered")}
-                </div>
-                ${!isCorrect ? `<div class="audit-ans-correct"><strong>Correct Answer:</strong> ${adminEscape(q.correctAnswer)}</div>` : ""}
-              </div>
-            </div>
-          `;
-        }).join("")}
-      </div>
-    `;
-  } else {
-    questionsHtml = '<p class="modal-copy">Detailed question review was not saved for this legacy test entry.</p>';
-  }
-
   body.innerHTML = `
     <div class="audit-profile-card">
       <div class="audit-profile-item"><small>Candidate Name</small><strong>${adminEscape(studentName)}</strong></div>
@@ -387,14 +432,19 @@ function openAuditModal(resultKey) {
 
     <div class="audit-security-row">
       <div>
-        <strong>🛡️ High-Security Anti-Cheat Protocol: ENFORCED</strong>
-        <div><span>Hardware Keyboard Locked · Only Left-Click Mouse Allowed · Window Blur Guard Active</span></div>
+        <strong>🛡️ AI Proctor Sentinel &amp; Anti-Cheat Audit: ENFORCED</strong>
+        <div><span>Shortcut Monitoring Active · Tab-Switch Guard · Realtime Telemetry Recorded</span></div>
       </div>
-      <span class="status-pill active">Verified Clean</span>
+      <span class="status-pill ${status === "TERMINATED" ? "blocked" : "active"}">${status === "TERMINATED" ? "Violation Detected" : "Verified Clean"}</span>
+    </div>
+
+    <div style="display:flex; justify-content:center; margin-top:10px;">
+      <a href="Marksheet.html?resultKey=${encodeURIComponent(resultKey)}" target="_top" class="btn-generate-marksheet" style="text-decoration:none; font-size:0.9rem; padding:10px 20px;">
+        👑 Open Official Marksheet &amp; Certificate View
+      </a>
     </div>
 
     ${subjectsHtml}
-    ${questionsHtml}
   `;
 
   modal.classList.remove("hidden");
@@ -447,6 +497,7 @@ async function savePermanentStudentEntry(event) {
   const fatherName = adminElement("permFatherName").value.trim();
   const phone = adminElement("permPhone").value.trim();
   const exam = adminElement("permExam").value;
+  const duration = Number(adminElement("permDuration")?.value || 60);
   const studentKey = sanitizeKey(studentId);
 
   if (!studentKey || studentKey.length < 2) {
@@ -461,15 +512,6 @@ async function savePermanentStudentEntry(event) {
     return;
   }
 
-  if (!/^[A-Za-z ]{2,30}$/.test(studentName) || !/^[A-Za-z ]{2,30}$/.test(fatherName)) {
-    error.textContent = "Student aur father name mein sirf letters/spaces hon (2-30 characters).";
-    return;
-  }
-  if (!/^03\d{9}$/.test(phone)) {
-    error.textContent = "Pakistani Mobile number exactly 11 digits ho aur 03 se start ho.";
-    return;
-  }
-
   submit.disabled = true;
   submit.textContent = "Saving Permanent ID...";
 
@@ -480,6 +522,7 @@ async function savePermanentStudentEntry(event) {
       fatherName,
       phone,
       exam,
+      durationMinutes: duration,
       password: UNIVERSAL_LIFETIME_PASSWORD,
       isBlocked: false,
       createdAt: firebase.database.ServerValue.TIMESTAMP,
@@ -488,7 +531,7 @@ async function savePermanentStudentEntry(event) {
 
     await adminDatabase.ref(`permanentStudents/${studentKey}`).set(studentData);
 
-    notice.textContent = `Permanent ID Created! ID: ${studentId} · Lifetime Password: ${UNIVERSAL_LIFETIME_PASSWORD} · Student: ${studentName}`;
+    notice.textContent = `Permanent ID Created! ID: ${studentId} · Lifetime Password: ${UNIVERSAL_LIFETIME_PASSWORD} · Exam: ${exam} (${duration} mins)`;
     setAdminNotice(`Student "${studentName}" (ID: ${studentId}) save ho gaya! Lifetime Password: ${UNIVERSAL_LIFETIME_PASSWORD}`);
     form.reset();
     adminElement("permPassword").value = UNIVERSAL_LIFETIME_PASSWORD;
@@ -503,12 +546,6 @@ async function savePermanentStudentEntry(event) {
 async function toggleBlockPermanentStudent(studentKey, currentBlockedStatus, studentId) {
   if (!adminAuthenticated) return;
   const newStatus = !currentBlockedStatus;
-
-  const confirmMsg = newStatus
-    ? `Kya aap Student ID "${studentId}" ko BLOCK karna chahte hain? Block hone par exam reject hoga aur message aayega: "Your ID is blocked from admin side".`
-    : `Kya aap Student ID "${studentId}" ko UNBLOCK karna chahte hain?`;
-
-  if (!window.confirm(confirmMsg)) return;
 
   try {
     await adminDatabase.ref(`permanentStudents/${studentKey}`).update({
@@ -528,9 +565,7 @@ async function toggleBlockPermanentStudent(studentKey, currentBlockedStatus, stu
 }
 
 async function deletePermanentStudent(studentKey, studentId) {
-  if (!adminAuthenticated) return;
-  if (!window.confirm(`Kya aap permanent student "${studentId}" ko delete karna chahte hain?`)) return;
-
+  if (!adminAuthenticated || !window.confirm(`Permanent student "${studentId}" ko delete karna hai?`)) return;
   try {
     await adminDatabase.ref(`permanentStudents/${studentKey}`).remove();
     setAdminNotice(`Permanent student "${studentId}" delete ho gaya.`);
@@ -550,8 +585,8 @@ Student Name: ${item.studentName}
 Father Name: ${item.fatherName}
 Mobile: ${item.phone}
 Assigned Exam: ${item.exam}
-Portal Access: ${item.isBlocked ? "BLOCKED" : "ACTIVE"}
-Note: Fill the exact same details in the exam registration form!`;
+Duration: ${item.durationMinutes || 60} Minutes
+Portal Access: ${item.isBlocked ? "BLOCKED" : "ACTIVE"}`;
 
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(textToCopy).then(() => {
@@ -573,11 +608,11 @@ Student Name: ${item.studentName}
 Father Name: ${item.fatherName}
 Mobile: ${item.phone}
 Assigned Exam: ${item.exam}
-Note: Student must enter this 6-digit Code (${code}) in the Exam Registration Form!`;
+Duration: ${item.durationMinutes || 60} Minutes`;
 
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(textToCopy).then(() => {
-      setAdminNotice(`Credentials for "${item.studentName}" (Code: ${code}) copied!`);
+      setAdminNotice(`Credentials for "${item.studentName}" copied!`);
     });
   } else {
     alert(textToCopy);
@@ -606,39 +641,22 @@ async function saveStudentEntry(event) {
   const generate = adminElement("generateEntryCodeButton");
   error.textContent = "";
   notice.textContent = "";
+
   const studentId = adminElement("entryStudentId").value.trim().toUpperCase();
   const studentName = adminElement("entryStudentName").value.trim();
   const fatherName = adminElement("entryFatherName").value.trim();
   const phone = adminElement("entryPhone").value.trim();
   const exam = adminElement("entryExam").value;
+  const duration = Number(adminElement("entryDuration")?.value || 60);
   const suppliedCode = adminElement("entryPasscode").value.trim();
 
-  if (!/^[A-Za-z0-9_-]{2,30}$/.test(studentId)) {
-    error.textContent = "Student ID mein sirf letters, numbers, hyphen aur underscore use karein (e.g. ST-1001).";
-    return;
-  }
-  if (!/^[A-Za-z ]{2,30}$/.test(studentName) || !/^[A-Za-z ]{2,30}$/.test(fatherName)) {
-    error.textContent = "Student aur father name mein sirf letters aur spaces hon, maximum 30 characters.";
-    return;
-  }
-  if (!/^03\d{9}$/.test(phone)) {
-    error.textContent = "Pakistani Mobile number exactly 11 digits ho aur 03 se start ho (e.g. 03222222222).";
-    return;
-  }
   if (suppliedCode === UNIVERSAL_LIFETIME_PASSWORD || suppliedCode === "999990") {
-    error.textContent = "Access Denied: Code '999990' is strictly reserved for Permanent Lifetime IDs (Form 2)! Yeh code Form 1 mein use nahi ho sakta. Koi doosra 6-digit code enter karein ya Form 2 mein Permanent Student ID banayein.";
-    adminElement("entryPasscode").focus();
-    return;
-  }
-  if (suppliedCode && !/^\d{6}$/.test(suppliedCode)) {
-    error.textContent = "One-time code exactly 6 digits ka hona chahiye (ya blank chorr dein auto-generate ke liye).";
+    error.textContent = "Code '999990' is strictly reserved for Form 2 (Permanent IDs)!";
     return;
   }
 
   submit.disabled = true;
   generate.disabled = true;
-  submit.textContent = "Saving...";
-  generate.textContent = "Generating...";
 
   try {
     let code = suppliedCode;
@@ -663,15 +681,14 @@ async function saveStudentEntry(event) {
       fatherName,
       phone,
       exam,
+      durationMinutes: duration,
       isUsed: false,
       status: "available",
       createdAt: firebase.database.ServerValue.TIMESTAMP
     };
 
-    // Save directly to passcodes/code
     await adminDatabase.ref(`passcodes/${code}`).set(payload);
 
-    // Save index mapping: studentId -> passcode
     const studentKey = sanitizeKey(studentId);
     await adminDatabase.ref(`studentIdToPasscode/${studentKey}`).set({
       code,
@@ -679,29 +696,15 @@ async function saveStudentEntry(event) {
       createdAt: firebase.database.ServerValue.TIMESTAMP
     });
 
-    // Save state for copy buttons
-    lastGeneratedCodeData = { code, studentId, studentName, fatherName, phone, exam };
-
-    // Update banner display
-    const banner = adminElement("generatedCodeBanner");
-    const bannerCode = adminElement("bannerCodeDisplay");
-    const bannerInfo = adminElement("bannerStudentInfo");
-    if (banner && bannerCode && bannerInfo) {
-      bannerCode.textContent = code;
-      bannerInfo.innerHTML = `Student: <strong>${adminEscape(studentName)}</strong> · ID: <strong>${adminEscape(studentId)}</strong> · Father: <strong>${adminEscape(fatherName)}</strong> · Exam: <strong>${adminEscape(exam)}</strong>`;
-      banner.classList.remove("hidden");
-    }
-
+    lastGeneratedCodeData = { code, studentId, studentName, fatherName, phone, exam, durationMinutes: duration };
     adminElement("entryPasscode").value = code;
-    notice.textContent = `Entry verified & saved! Student ID: ${studentId} · One-Time Code: ${code}`;
-    setAdminNotice(`Success! One-Time Code "${code}" generated for Student ID "${studentId}".`);
-  } catch (errorValue) {
-    error.textContent = errorValue.message || "Student entry save nahi ho saki.";
+    notice.textContent = `Saved! Student ID: ${studentId} · Code: ${code} · Exam: ${exam}`;
+    setAdminNotice(`Success! Code "${code}" created for "${studentName}".`);
+  } catch (err) {
+    error.textContent = err.message || "Entry save nahi ho saki.";
   } finally {
     submit.disabled = false;
     generate.disabled = false;
-    submit.textContent = "Save Student Entry";
-    generate.textContent = "⚡ Generate One-Time Code";
   }
 }
 
@@ -723,25 +726,20 @@ async function toggleExamAccess() {
 async function deletePasscode(code) {
   if (!adminAuthenticated || !window.confirm(`Code ${code} ko delete karna hai?`)) return;
   try {
-    const item = passcodesCache[code];
-    if (item && item.studentId) {
-      const studentKey = sanitizeKey(item.studentId);
-      await adminDatabase.ref(`studentIdToPasscode/${studentKey}`).remove().catch(() => {});
-    }
     await adminDatabase.ref(`passcodes/${code}`).remove();
-    setAdminNotice(`Code ${code} Firebase se delete ho gaya.`);
+    setAdminNotice(`Code ${code} delete ho gaya.`);
   } catch (error) {
-    setAdminNotice(`Code delete nahi ho saka: ${error.message}`, true);
+    setAdminNotice(`Code delete fail: ${error.message}`, true);
   }
 }
 
 async function deleteExamResult(key) {
-  if (!adminAuthenticated || !window.confirm("Is exam result ko permanently delete karna hai?")) return;
+  if (!adminAuthenticated || !window.confirm("Is result ko delete karna hai?")) return;
   try {
     await adminDatabase.ref(`examResults/${key}`).remove();
     setAdminNotice("Exam result delete ho gaya.");
   } catch (error) {
-    setAdminNotice(`Result delete nahi ho saka: ${error.message}`, true);
+    setAdminNotice(`Result delete fail: ${error.message}`, true);
   }
 }
 
@@ -758,104 +756,61 @@ function switchSubnav(tabName) {
   const permanentWrap = adminElement("permanentSectionWrap");
   const oneTimeWrap = adminElement("oneTimeSectionWrap");
   const resultsWrap = adminElement("resultsSectionWrap");
+  const marksheetWrap = adminElement("marksheetSectionWrap");
   
   const permBtn = adminElement("navPermanentTab");
   const oneTimeBtn = adminElement("navOneTimeTab");
   const resultsBtn = adminElement("navResultsTab");
+  const marksheetBtn = adminElement("navMarksheetTab");
 
   permBtn.classList.toggle("active", tabName === "permanent");
   oneTimeBtn.classList.toggle("active", tabName === "onetime");
   resultsBtn.classList.toggle("active", tabName === "results");
+  marksheetBtn.classList.toggle("active", tabName === "marksheet");
 
   permanentWrap.classList.toggle("hidden", tabName !== "permanent");
   oneTimeWrap.classList.toggle("hidden", tabName !== "onetime");
   resultsWrap.classList.toggle("hidden", tabName !== "results");
-}
+  marksheetWrap.classList.toggle("hidden", tabName !== "marksheet");
 
-function exportResultsToCsv() {
-  const entries = Object.values(resultsCache);
-  if (!entries.length) {
-    alert("No exam results to export!");
-    return;
+  if (tabName === "marksheet") {
+    renderMarksheetCandidates();
   }
-
-  const headers = ["Student Name", "Student ID", "Father Name", "Mobile", "Assigned Exam", "Marks", "Total", "Percentage", "Status", "Access Mode", "Date"];
-  const rows = entries.map((r) => {
-    const name = r.candidate?.fullName || r.candidate?.studentName || r.studentName || "";
-    const id = r.candidate?.studentId || r.studentId || "";
-    const father = r.candidate?.fatherName || r.fatherName || "";
-    const phone = r.candidate?.phone || r.phone || "";
-    const exam = r.candidate?.exam || r.exam || "All Subjects";
-    const marks = r.marks ?? 0;
-    const total = r.totalMarks ?? 100;
-    const perc = `${r.percentage ?? marks}%`;
-    const status = r.status || "COMPLETED";
-    const mode = (r.candidate?.isPermanent || r.isPermanent) ? "Permanent ID" : "One-Time Code";
-    const date = r.createdAt ? new Date(r.createdAt).toISOString() : "";
-    return [name, id, father, phone, exam, marks, total, perc, status, mode, date]
-      .map((val) => `"${String(val).replace(/"/g, '""')}"`)
-      .join(",");
-  });
-
-  const csvContent = [headers.join(","), ...rows].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `skilltester-results-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
 }
 
-window.addEventListener("message", (event) => {
-  if (event.source === window.parent && event.data?.type === "skilltester:admin-closed") lockAdminPanel();
+// Instant Manual Marksheet Form Handler
+adminElement("instantMarksheetForm")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const id = adminElement("instId").value.trim().toUpperCase();
+  const name = adminElement("instName").value.trim();
+  const father = adminElement("instFather").value.trim();
+  const phone = adminElement("instPhone").value.trim();
+  const exam = adminElement("instExam").value;
+  const marks = adminElement("instMarks").value;
+  const status = adminElement("instStatus").value;
+  const reason = adminElement("instReason").value.trim();
+
+  const url = `Marksheet.html?studentId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&father=${encodeURIComponent(father)}&phone=${encodeURIComponent(phone)}&exam=${encodeURIComponent(exam)}&marks=${encodeURIComponent(marks)}&status=${encodeURIComponent(status)}&reason=${encodeURIComponent(reason)}`;
+  (window.top || window).location.href = url;
 });
 
+// Event listeners
 adminElement("adminLoginForm").addEventListener("submit", verifyAdminAccess);
 adminElement("permanentStudentForm").addEventListener("submit", savePermanentStudentEntry);
 adminElement("clearPermButton").addEventListener("click", () => {
   adminElement("permanentStudentForm").reset();
   adminElement("permPassword").value = UNIVERSAL_LIFETIME_PASSWORD;
-  adminElement("permError").textContent = "";
-  adminElement("createdPermNotice").textContent = "";
 });
 adminElement("fillUniversalPassBtn")?.addEventListener("click", () => {
   adminElement("permPassword").value = UNIVERSAL_LIFETIME_PASSWORD;
-  adminElement("permPassword").focus();
-  setAdminNotice("Universal Lifetime Password (999990) form mein fill ho gaya.");
+  setAdminNotice("Universal Lifetime Password (999990) fill ho gaya.");
 });
 adminElement("resetPermPassBtn")?.addEventListener("click", () => {
   adminElement("permPassword").value = UNIVERSAL_LIFETIME_PASSWORD;
 });
 
 adminElement("studentEntryForm").addEventListener("submit", saveStudentEntry);
-adminElement("generateEntryCodeButton").addEventListener("click", () => {
-  saveStudentEntry();
-});
-
-adminElement("copyGeneratedCodeBtn")?.addEventListener("click", () => {
-  if (!lastGeneratedCodeData) return;
-  navigator.clipboard?.writeText(lastGeneratedCodeData.code).then(() => {
-    setAdminNotice(`Code "${lastGeneratedCodeData.code}" copied to clipboard!`);
-  });
-});
-
-adminElement("copyAllStudentInfoBtn")?.addEventListener("click", () => {
-  if (!lastGeneratedCodeData) return;
-  const item = lastGeneratedCodeData;
-  const text = `=== SkillTester Exam Credentials ===
-Student ID: ${item.studentId}
-One-Time Code: ${item.code}
-Student Name: ${item.studentName}
-Father Name: ${item.fatherName}
-Mobile: ${item.phone}
-Assigned Exam: ${item.exam}
-Note: Student must enter this 6-digit Code (${item.code}) in the Exam Registration Form!`;
-  navigator.clipboard?.writeText(text).then(() => {
-    setAdminNotice(`Full credentials for "${item.studentName}" copied!`);
-  });
-});
+adminElement("generateEntryCodeButton").addEventListener("click", () => saveStudentEntry());
 
 adminElement("toggleAdmin").addEventListener("click", toggleExamAccess);
 adminElement("adminLogout").addEventListener("click", lockAdminPanel);
@@ -863,79 +818,61 @@ adminElement("adminLogout").addEventListener("click", lockAdminPanel);
 adminElement("navPermanentTab").addEventListener("click", () => switchSubnav("permanent"));
 adminElement("navOneTimeTab").addEventListener("click", () => switchSubnav("onetime"));
 adminElement("navResultsTab").addEventListener("click", () => switchSubnav("results"));
+adminElement("navMarksheetTab").addEventListener("click", () => switchSubnav("marksheet"));
+
+adminElement("filterMarksheetAll")?.addEventListener("click", (e) => {
+  currentMarksheetFilter = "all";
+  document.querySelectorAll("#marksheetSectionWrap .subnav-btn").forEach((b) => b.classList.remove("active"));
+  e.target.classList.add("active");
+  renderMarksheetCandidates();
+});
+adminElement("filterMarksheetPassed")?.addEventListener("click", (e) => {
+  currentMarksheetFilter = "passed";
+  document.querySelectorAll("#marksheetSectionWrap .subnav-btn").forEach((b) => b.classList.remove("active"));
+  e.target.classList.add("active");
+  renderMarksheetCandidates();
+});
+adminElement("filterMarksheetFailed")?.addEventListener("click", (e) => {
+  currentMarksheetFilter = "failed";
+  document.querySelectorAll("#marksheetSectionWrap .subnav-btn").forEach((b) => b.classList.remove("active"));
+  e.target.classList.add("active");
+  renderMarksheetCandidates();
+});
+adminElement("filterMarksheetTerminated")?.addEventListener("click", (e) => {
+  currentMarksheetFilter = "terminated";
+  document.querySelectorAll("#marksheetSectionWrap .subnav-btn").forEach((b) => b.classList.remove("active"));
+  e.target.classList.add("active");
+  renderMarksheetCandidates();
+});
 
 adminElement("permSearch")?.addEventListener("input", renderPermanentStudents);
 adminElement("resultSearch")?.addEventListener("input", renderResults);
 
-// Export CSV
-adminElement("exportCsvBtn")?.addEventListener("click", exportResultsToCsv);
-
-// Audit Modal Handlers
 adminElement("closeAuditModalBtn")?.addEventListener("click", closeAuditModal);
 adminElement("dismissAuditModalBtn")?.addEventListener("click", closeAuditModal);
 adminElement("printAuditReportBtn")?.addEventListener("click", () => window.print());
 
-// Inputs sanitation
-adminElement("permPhone").addEventListener("input", (event) => {
-  event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11);
-});
-adminElement("permStudentId").addEventListener("input", (event) => {
-  event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 30);
-});
-adminElement("permStudentName").addEventListener("input", (event) => {
-  event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30);
-});
-adminElement("permFatherName").addEventListener("input", (event) => {
-  event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30);
-});
-
-adminElement("entryPhone").addEventListener("input", (event) => {
-  event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11);
-});
-adminElement("entryStudentId").addEventListener("input", (event) => {
-  event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 30);
-});
-adminElement("entryStudentName").addEventListener("input", (event) => {
-  event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30);
-});
-adminElement("entryFatherName").addEventListener("input", (event) => {
-  event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30);
-});
-adminElement("entryPasscode").addEventListener("input", (event) => {
-  event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
-  const error = adminElement("entryError");
-  if (event.target.value === "999990" || event.target.value === UNIVERSAL_LIFETIME_PASSWORD) {
-    if (error) error.textContent = "Restricted: Code '999990' is strictly for Form 2 (Permanent Lifetime ID). Yeh code Form 1 mein use nahi ho sakta! Please change code.";
-    event.target.style.borderColor = "#ef4444";
-  } else {
-    if (error && error.textContent.includes("999990")) error.textContent = "";
-    event.target.style.borderColor = "";
-  }
-});
-
-// Click handlers on lists & radar
+// Click delegations
 adminElement("liveRadarContainer")?.addEventListener("click", async (event) => {
   const warnBtn = event.target.closest("[data-warn-live]");
   if (warnBtn) {
     const sessionId = warnBtn.dataset.warnLive;
     const name = warnBtn.dataset.studentName;
-    const defaultMsg = "Please maintain full focus on the exam screen!";
-    const customMsg = window.prompt(`Candidate "${name}" ko kya warning bhejni hai?`, defaultMsg);
+    const customMsg = window.prompt(`Candidate "${name}" ko kya warning bhejni hai?`, "AI Proctor Sentinel: Focus on exam screen immediately!");
     if (customMsg && customMsg.trim()) {
       await adminDatabase.ref(`activeExamSessions/${sessionId}/lastWarning`).set({
         message: customMsg.trim(),
         timestamp: Date.now()
       });
-      setAdminNotice(`Live security warning candidate "${name}" ki screen par send ho gayi!`);
+      setAdminNotice(`Live warning candidate "${name}" ki screen par bhej di gayi!`);
     }
     return;
   }
-
   const termBtn = event.target.closest("[data-terminate-live]");
   if (termBtn) {
     const sessionId = termBtn.dataset.terminateLive;
     const name = termBtn.dataset.studentName;
-    if (window.confirm(`Student "${name}" ka live exam session terminate karna hai?`)) {
+    if (window.confirm(`Student "${name}" ka exam session terminate karna hai?`)) {
       await adminDatabase.ref(`activeExamSessions/${sessionId}`).update({
         forceTerminated: true,
         terminateReason: "Terminated live by Admin Command Center."
@@ -945,7 +882,7 @@ adminElement("liveRadarContainer")?.addEventListener("click", async (event) => {
   }
 });
 
-adminElement("permanentList").addEventListener("click", (event) => {
+adminElement("permanentList")?.addEventListener("click", (event) => {
   const blockBtn = event.target.closest("[data-block-key]");
   if (blockBtn) {
     toggleBlockPermanentStudent(blockBtn.dataset.blockKey, false, blockBtn.dataset.studentId);
@@ -961,13 +898,22 @@ adminElement("permanentList").addEventListener("click", (event) => {
     copyPermanentCredentials(copyBtn.dataset.copyKey);
     return;
   }
+  const quickMarksheet = event.target.closest("[data-quick-marksheet]");
+  if (quickMarksheet) {
+    const id = quickMarksheet.dataset.quickMarksheet;
+    const name = quickMarksheet.dataset.name;
+    const father = quickMarksheet.dataset.father;
+    const exam = quickMarksheet.dataset.exam;
+    (window.top || window).location.href = `Marksheet.html?studentId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&father=${encodeURIComponent(father)}&exam=${encodeURIComponent(exam)}&status=PASSED&marks=88`;
+    return;
+  }
   const deleteBtn = event.target.closest("[data-delete-perm]");
   if (deleteBtn) {
     deletePermanentStudent(deleteBtn.dataset.deletePerm, deleteBtn.dataset.studentId);
   }
 });
 
-adminElement("passcodeList").addEventListener("click", (event) => {
+adminElement("passcodeList")?.addEventListener("click", (event) => {
   const copyBtn = event.target.closest("[data-copy-onetime]");
   if (copyBtn) {
     copyOneTimeCredentials(copyBtn.dataset.copyOnetime);
@@ -977,7 +923,12 @@ adminElement("passcodeList").addEventListener("click", (event) => {
   if (button) deletePasscode(button.dataset.deleteCode);
 });
 
-adminElement("resultList").addEventListener("click", (event) => {
+adminElement("resultList")?.addEventListener("click", (event) => {
+  const openMarksheet = event.target.closest("[data-open-marksheet-key]");
+  if (openMarksheet) {
+    (window.top || window).location.href = `Marksheet.html?resultKey=${encodeURIComponent(openMarksheet.dataset.openMarksheetKey)}`;
+    return;
+  }
   const inspectBtn = event.target.closest("[data-inspect-result]");
   if (inspectBtn) {
     openAuditModal(inspectBtn.dataset.inspectResult);
@@ -986,3 +937,25 @@ adminElement("resultList").addEventListener("click", (event) => {
   const button = event.target.closest("[data-delete-result]");
   if (button) deleteExamResult(button.dataset.deleteResult);
 });
+
+adminElement("marksheetCandidatesList")?.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-open-marksheet-key]");
+  if (btn) {
+    (window.top || window).location.href = `Marksheet.html?resultKey=${encodeURIComponent(btn.dataset.openMarksheetKey)}`;
+  }
+});
+
+document.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  return false;
+}, true);
+
+window.addEventListener("keydown", (e) => {
+  const key = event.key || "";
+  const isFKey = /^F\d+$/.test(key) || (event.keyCode >= 112 && event.keyCode <= 123);
+  const isDangerousCtrl = event.ctrlKey && ["u", "s", "p", "r", "i", "j"].includes(key.toLowerCase());
+  if (isFKey || isDangerousCtrl) {
+    e.preventDefault();
+    return false;
+  }
+}, true);

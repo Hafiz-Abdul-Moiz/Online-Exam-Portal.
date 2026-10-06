@@ -6,13 +6,12 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="description" content="Secure HTML, CSS and JavaScript examination portal with lifetime student IDs.">
-  <title>SkillTester Exam Portal</title>
-  <link rel="stylesheet" href="style.css?v=22">
-  <link rel="stylesheet" href="Exam.css?v=22">
-  <link rel="stylesheet" href="Admin-panel.css?v=22">
+  <meta name="description" content="Secure Proctored Examination Portal with AI Sentinel & VVIP Marksheet Generator.">
+  <title>SkillTester Proctored Exam Portal</title>
+  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="Exam.css?v=24">
+  <link rel="stylesheet" href="Admin-panel.css?v=24">
   <style>
-    /* Full-width responsive Exam View & Proctored Arena Frame */
     #examView.view, .exam-wrap {
       width: 100% !important;
       max-width: 100% !important;
@@ -40,35 +39,37 @@
         <div class="brand-mark" aria-hidden="true">&lt;/&gt;</div>
         <div>
           <h1>SkillTester Exam Portal</h1>
-          <p>HTML + CSS + JavaScript certification arena</p>
+          <p>AI Proctored Examination &amp; Certification Authority</p>
         </div>
       </a>
       <nav class="main-nav" aria-label="Primary navigation">
         <a href="#homeView">Home</a>
-        <a href="#examView">Exam</a>
+        <a href="#examView">Exam Arena</a>
         <a href="#resultView">Results</a>
-        <button id="adminButton" class="nav-admin" type="button">Admin Panel</button>
+        <a href="Privicy-Policy.html">Privacy Policy</a>
+        <button id="adminButton" class="nav-admin" type="button">Admin Command Center</button>
       </nav>
       <div class="security-badge">
-        <span class="pulse-dot"></span> Strict Anti-Cheating Active
+        <span class="pulse-dot"></span> AI Proctor Sentinel Active
       </div>
     </header>
 
     <main>
+      <!-- HOME VIEW (Clean, uncluttered, focused) -->
       <section id="homeView" class="view active">
         <div class="hero">
           <div>
-            <div class="eyebrow">Proctored assessment / 2026</div>
-            <h2>Prove what you can build.</h2>
-            <p class="hero-copy">A focused, timed skills assessment for modern front-end fundamentals. Earn your score by solving 60 practical concept checks across the browser stack.</p>
+            <div class="eyebrow">AI Proctored Certification / 2026</div>
+            <h2>Prove what you can achieve.</h2>
+            <p class="hero-copy">Welcome to the official SkillTester assessment portal. Both Computer Science Group and Web Development certification exams are supervised inside our high-security Exam Arena. Click below to enter the Arena.</p>
             <div class="badge-row">
-              <span class="badge">30 Minutes</span>
-              <span class="badge">60 MCQs</span>
-              <span class="badge">50 / 100 To Pass</span>
+              <span class="badge">Computer Science Group</span>
+              <span class="badge">Web Development Track</span>
+              <span class="badge">AI Anti-Cheat Sentinel</span>
+              <span class="badge">VVIP Verified Marksheets</span>
             </div>
             <div class="hero-actions">
-              <button id="startButton" class="primary-btn" type="button">PLAY GAME / START EXAM</button>
-              <span class="pill"><span class="pulse-dot"></span> Live session lock</span>
+              <button id="startButton" class="primary-btn" type="button">ENTER EXAM ARENA →</button>
             </div>
           </div>
           <div class="hero-visual">
@@ -79,16 +80,19 @@
         </div>
       </section>
 
-      <section id="examView" class="view exam-wrap" style="width: 100%; max-width: 100%; min-height: calc(100vh - 65px); padding: 0; margin: 0; box-sizing: border-box;">
-        <iframe id="examCardFrame" class="exam-card-frame" src="Exam.html" title="SkillTester Proctored Exam Arena" style="width: 100%; min-width: 100%; height: calc(100vh - 65px); min-height: 88vh; border: 0; display: block; background: #090d16; box-sizing: border-box;"></iframe>
+      <!-- EXAM ARENA VIEW (Holds the 2 Exam Cards & Proctored Arena inside iframe) -->
+      <section id="examView" class="view exam-wrap">
+        <iframe id="examCardFrame" class="exam-card-frame" src="Exam.html" title="SkillTester Proctored Exam Arena"></iframe>
       </section>
 
+      <!-- RESULTS & SCORECARD VIEW -->
       <section id="resultView" class="view">
         <article id="scorecard" class="result-card hidden">
           <div id="resultIcon" class="result-icon">✓</div>
-          <div id="resultEyebrow" class="eyebrow">Assessment complete</div>
-          <h2 id="resultHeading">Qualified for the next level.</h2>
-          <p id="resultSubtitle" class="result-subtitle">Your verified scorecard is ready. Keep this record for your portfolio or training log.</p>
+          <div id="resultEyebrow" class="eyebrow">Assessment Complete</div>
+          <h2 id="resultHeading">Qualified for the Next Level.</h2>
+          <p id="resultSubtitle" class="result-subtitle">Your verified scorecard is ready. You can download the report or open the official animated VVIP Marksheet.</p>
+          
           <div class="score-grid">
             <div class="score-item"><span class="score-label">Student Name</span><strong id="resultName"></strong></div>
             <div class="score-item"><span class="score-label">Father Name</span><strong id="resultFather"></strong></div>
@@ -96,11 +100,17 @@
             <div class="score-item"><span class="score-label">Percentage</span><strong id="resultPercentage"></strong></div>
             <div class="score-item"><span class="score-label">Exam Status</span><strong id="resultRating"></strong></div>
           </div>
-          <button id="downloadButton" class="primary-btn" type="button">Download Scorecard</button>
+
+          <div class="result-actions-row">
+            <a id="openVipMarksheetBtn" href="Marksheet.html" class="btn-vip-marksheet">
+              👑 View Official VVIP Animated Marksheet &amp; Certificate
+            </a>
+            <button id="downloadButton" class="secondary-btn" type="button">Download PDF Summary</button>
+          </div>
         </article>
 
         <section id="answerReview" class="answer-review hidden" aria-labelledby="answerReviewTitle">
-          <h3 id="answerReviewTitle">Answer review</h3>
+          <h3 id="answerReviewTitle">Question by Question Answer Review</h3>
           <p class="answer-review-intro">Your selected answers and the correct answers are shown below.</p>
           <div id="answerReviewList" class="answer-review-list"></div>
         </section>
@@ -108,8 +118,8 @@
         <section class="live-results-panel">
           <div class="live-results-heading">
             <div>
-              <div class="eyebrow">Firebase live feed</div>
-              <h3>Recent Exam Results</h3>
+              <div class="eyebrow">Firebase Live Feed</div>
+              <h3>Recent Candidate Results</h3>
             </div>
             <button id="refreshResults" class="secondary-btn" type="button">Refresh Results</button>
           </div>
@@ -118,51 +128,65 @@
         </section>
       </section>
 
+      <!-- FAILURE / DISQUALIFIED VIEW -->
       <section id="failureView" class="view">
         <article class="failure-card">
           <div class="result-icon">!</div>
-          <div class="eyebrow">Session closed</div>
-          <h2 id="failureTitle">EXAM TERMINATED / FAILED</h2>
+          <div class="eyebrow">Session Closed</div>
+          <h2 id="failureTitle">EXAM TERMINATED / DISQUALIFIED</h2>
           <p id="failureReason"></p>
+          <div class="result-actions-row">
+            <a id="viewDisciplinaryRecordBtn" href="Marksheet.html" class="danger-btn">
+              🚨 View Official Disciplinary Penalty Record
+            </a>
+          </div>
         </article>
       </section>
     </main>
   </div>
 
+  <!-- REGISTRATION MODAL (Auto-locks Exam Track from Admin Credentials) -->
   <div id="registrationModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="registrationTitle">
     <div class="modal-panel">
-      <h2 id="registrationTitle">Candidate registration</h2>
-      <p class="modal-copy">Your identity and access passcode are checked against the exam entry created by the administrator.</p>
+      <h2 id="registrationTitle">Candidate Registration &amp; Passcode Verification</h2>
+      <p class="modal-copy">Enter your registered details. Your assigned exam subject and timer are strictly retrieved from your Admin credentials.</p>
       <form id="registrationForm" class="form-grid">
         <div class="field">
           <label for="studentId">Student ID</label>
-          <input id="studentId" name="studentId" type="text" maxlength="30" autocomplete="off" placeholder="e.g. ST-1001" required>
+          <input id="studentId" name="studentId" type="text" maxlength="30" autocomplete="off" placeholder="e.g. ST-1001 or PERM-101" required>
         </div>
         <div class="field">
           <label for="fullName">Student Name</label>
-          <input id="fullName" name="fullName" type="text" maxlength="30" autocomplete="name" pattern="[A-Za-z ]{2,30}" title="Use letters and spaces only, maximum 30 characters." placeholder="Student name" required>
+          <input id="fullName" name="fullName" type="text" maxlength="30" autocomplete="name" pattern="[A-Za-z ]{2,30}" placeholder="Full student name" required>
         </div>
         <div class="field">
           <label for="fatherName">Father Name</label>
-          <input id="fatherName" name="fatherName" type="text" maxlength="30" pattern="[A-Za-z ]{2,30}" title="Use letters and spaces only, maximum 30 characters." placeholder="Father name" required>
+          <input id="fatherName" name="fatherName" type="text" maxlength="30" pattern="[A-Za-z ]{2,30}" placeholder="Father name" required>
         </div>
         <div class="field">
           <label for="candidatePhone">Pakistani Mobile Number</label>
-          <input id="candidatePhone" name="phone" type="tel" inputmode="numeric" pattern="03[0-9]{9}" maxlength="11" minlength="11" placeholder="03211234567" title="Enter exactly 11 digits starting with 03." required>
+          <input id="candidatePhone" name="phone" type="tel" inputmode="numeric" pattern="03[0-9]{9}" maxlength="11" minlength="11" placeholder="03xxxxxxxxx" required>
         </div>
         <div class="field">
-          <label for="accessCode">Access Passcode or Lifetime Password</label>
-          <input id="accessCode" name="accessCode" type="password" maxlength="30" autocomplete="current-password" placeholder="6-digit code OR Lifetime Password (999990)" required>
+          <label>Assigned Exam Track &amp; Timer</label>
+          <div style="background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:10px 14px; font-size:0.82rem; color:#38bdf8;">
+            🔒 Automatically verified &amp; locked from Admin credentials
+          </div>
+        </div>
+        <div class="field">
+          <label for="accessCode">Access Passcode OR Lifetime Password (999990)</label>
+          <input id="accessCode" name="accessCode" type="password" maxlength="30" autocomplete="current-password" placeholder="6-digit code OR 999990" required>
         </div>
         <p id="registrationError" class="form-error" role="alert"></p>
         <div class="form-actions">
           <button id="closeRegistration" class="secondary-btn" type="button">Cancel</button>
-          <button id="registrationSubmit" class="primary-btn" type="submit">Verify &amp; Continue</button>
+          <button id="registrationSubmit" class="primary-btn" type="submit">Verify &amp; Enter Arena</button>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- ADMIN HOST MODAL -->
   <div id="adminModal" class="modal admin-host-modal" role="dialog" aria-modal="true" aria-label="Admin control center">
     <div class="admin-host-panel">
       <button id="closeAdmin" class="icon-close admin-host-close" type="button" aria-label="Close admin panel">×</button>
@@ -170,6 +194,7 @@
     </div>
   </div>
 
+  <!-- LOADER SCREEN -->
   <div id="loaderScreen" class="loader-screen">
     <div class="loader-brand">
       <span>&lt;/&gt;</span>
@@ -185,8 +210,8 @@
     </div>
     <div class="loader-steps">
       <span class="loader-step active">ACCESS</span>
-      <span class="loader-step">SECURITY</span>
-      <span class="loader-step">READY</span>
+      <span class="loader-step">AI SENTINEL</span>
+      <span class="loader-step">ARENA READY</span>
     </div>
   </div>
 
@@ -196,6 +221,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>

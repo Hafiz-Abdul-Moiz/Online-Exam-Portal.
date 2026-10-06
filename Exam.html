@@ -3,15 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SkillTester proctored exam arena.">
+  <meta name="description" content="SkillTester proctored exam arena with AI Sentinel.">
   <title>SkillTester Proctored Exam Arena</title>
-  <link rel="stylesheet" href="style.css?v=22">
-  <link rel="stylesheet" href="Exam.css?v=22">
+  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="Exam.css?v=24">
   <style>
-    /* hidden attribute / class must always win over display:grid / flex in Exam.css */
     [hidden], .hidden { display: none !important; }
- 
-    /* Zero-specificity fallbacks (style.css overrides these if it defines them) */
     :where(.primary-btn) {
       background: #3b82f6; color: #fff; border: 0; border-radius: 10px;
       padding: 0.8rem 1.6rem; font-size: 0.95rem; font-weight: 700; cursor: pointer;
@@ -23,76 +20,136 @@
     :where(.primary-btn:disabled, .secondary-btn:disabled) { opacity: 0.45; cursor: not-allowed; }
     :where(.progress-track) { height: 6px; background: #1f2937; border-radius: 9999px; overflow: hidden; margin-top: 1rem; }
     :where(.progress-fill) { height: 100%; width: 0; background: #3b82f6; transition: width 0.25s; }
-    @keyframes pulseAnim { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
   </style>
 </head>
 <body class="exam-page-body">
  
-  <!-- ========== EXAM OVERVIEW CARD (click Begin -> registration form opens in parent) ========== -->
+  <!-- EXAM ARENA OVERVIEW WITH BOTH EXAM CARDS -->
   <section id="examOverviewCard" class="exam-overview">
-    <div class="exam-overview-card">
-      <div class="exam-overview-copy">
-        <div class="eyebrow">Proctored assessment / 2026</div>
-        <h1>SkillTester Certification Exam</h1>
-        <p>
-          Yeh ek timed, proctored assessment hai jisme HTML, CSS aur JavaScript ke 60 practical
-          concept-check MCQs hain. Exam shuru karne se pehle apni details aur access passcode verify karwayein.
-        </p>
- 
-        <div class="exam-overview-stats">
-          <span><strong>60</strong> MCQs</span>
-          <span><strong>30</strong> Minutes</span>
-          <span><strong>50 / 100</strong> To Pass</span>
-        </div>
- 
-        <div class="exam-subject-cards">
-          <div class="exam-subject-card">
-            <div class="exam-subject-icon">&lt;/&gt;</div>
-            <div><strong>HTML</strong><small>20 Questions</small></div>
-          </div>
-          <div class="exam-subject-card">
-            <div class="exam-subject-icon">{ }</div>
-            <div><strong>CSS</strong><small>20 Questions</small></div>
-          </div>
-          <div class="exam-subject-card">
-            <div class="exam-subject-icon">JS</div>
-            <div><strong>JavaScript</strong><small>20 Questions</small></div>
-          </div>
-        </div>
- 
-        <div class="proctor-diagnostics-panel">
-          <div class="diag-header">
-            <span class="diag-pulse"></span>
-            <strong>Proctor diagnostics</strong>
-          </div>
-          <div class="diag-grid">
-            <div><span class="diag-check">✓</span> Secure session lock ready</div>
-            <div><span class="diag-check">✓</span> Tab-switch monitoring active</div>
-            <div><span class="diag-check">✓</span> Keyboard &amp; right-click protection</div>
-            <div><span class="diag-check">✓</span> Live admin surveillance enabled</div>
+    <div style="text-align:center; margin-bottom:24px;">
+      <div class="eyebrow" style="margin-bottom:6px;">SkillTester Proctored Assessment 2026</div>
+      <h1 style="font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight:800; color:#fff; letter-spacing:-0.02em;">
+        Select Examination Track
+      </h1>
+      <p style="color:var(--muted); max-width:640px; margin:8px auto 0; font-size:0.95rem; line-height:1.5;">
+        Both examination tracks below are supervised in real-time by the <strong>AI Proctor Sentinel</strong>. Click on your assigned track to enter candidate registration.
+      </p>
+    </div>
+
+    <!-- 2 CARDS IN EXAM ARENA -->
+    <div class="exam-cards-grid" style="margin-top:0;">
+      <!-- CARD 1: COMPUTER SCIENCE & SCIENCE GROUP -->
+      <article class="exam-category-card cs-group">
+        <div>
+          <span class="exam-category-badge cs">⭐ Academic Track 1</span>
+          <h3>Computer Science &amp; Technical Science Board Exam</h3>
+          <p>
+            Comprehensive academic curriculum including English Compulsory (Grammar, Nouns, Pronouns, Verbs, MCQs, Essay/Letter structure), Computer Science (Architecture, SQL, OOP), Mathematics, and Physics.
+          </p>
+
+          <div class="exam-subjects-list">
+            <div class="exam-sub-item">
+              <span>📖</span>
+              <div><strong>English</strong><small style="color:var(--muted); display:block;">Grammar &amp; 20 MCQs</small></div>
+            </div>
+            <div class="exam-sub-item">
+              <span>💻</span>
+              <div><strong>Computer Science</strong><small style="color:var(--muted); display:block;">Theory &amp; Programming</small></div>
+            </div>
+            <div class="exam-sub-item">
+              <span>📐</span>
+              <div><strong>Mathematics</strong><small style="color:var(--muted); display:block;">Matrices, Calculus</small></div>
+            </div>
+            <div class="exam-sub-item">
+              <span>⚡</span>
+              <div><strong>Physics</strong><small style="color:var(--muted); display:block;">Mechanics, Optics</small></div>
+            </div>
           </div>
         </div>
- 
-        <button id="beginExamButton" class="primary-btn" type="button">BEGIN EXAM</button>
+
+        <div class="exam-card-footer">
+          <div class="badge-row">
+            <span class="badge">1 Hour / 2 Hours</span>
+            <span class="badge">60 Questions</span>
+            <span class="badge" style="color:#a5b4fc; border-color:rgba(129,140,248,0.4);">Section A, B, C</span>
+          </div>
+          <button id="beginCsExamBtn" class="primary-btn" type="button" style="background:#818cf8; color:#0b0f19;">
+            SELECT &amp; START CS EXAM →
+          </button>
+        </div>
+      </article>
+
+      <!-- CARD 2: WEB DEVELOPMENT GROUP (HTML + CSS + JS) -->
+      <article class="exam-category-card">
+        <div>
+          <span class="exam-category-badge web">🌐 Technical Track 2</span>
+          <h3>Web Development Certification (HTML + CSS + JavaScript)</h3>
+          <p>
+            Focused front-end skills assessment covering semantic HTML5 markup, responsive CSS3 layout (Flexbox/Grid), and modern asynchronous JavaScript ES6+.
+          </p>
+
+          <div class="exam-subjects-list">
+            <div class="exam-sub-item">
+              <span>&lt;/&gt;</span>
+              <div><strong>HTML5</strong><small style="color:var(--muted); display:block;">20 Questions</small></div>
+            </div>
+            <div class="exam-sub-item">
+              <span>{ }</span>
+              <div><strong>CSS3</strong><small style="color:var(--muted); display:block;">20 Questions</small></div>
+            </div>
+            <div class="exam-sub-item">
+              <span>JS</span>
+              <div><strong>JavaScript</strong><small style="color:var(--muted); display:block;">20 Questions</small></div>
+            </div>
+            <div class="exam-sub-item">
+              <span>🛡️</span>
+              <div><strong>AI Proctor</strong><small style="color:var(--muted); display:block;">Active Sentinel</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="exam-card-footer">
+          <div class="badge-row">
+            <span class="badge">30 Min / 1 Hour</span>
+            <span class="badge">60 MCQs</span>
+            <span class="badge">50/100 To Pass</span>
+          </div>
+          <button id="beginWebExamBtn" class="primary-btn" type="button">
+            SELECT &amp; START WEB EXAM →
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <!-- AI Diagnostics Banner below cards -->
+    <div class="proctor-diagnostics-panel" style="margin-top:24px;">
+      <div class="diag-header">
+        <span class="diag-pulse"></span>
+        <strong>AI Proctor Sentinel &amp; Anti-Cheating Diagnostics Ready</strong>
+      </div>
+      <div class="diag-grid">
+        <div><span class="diag-check">✓</span> Live shortcut &amp; Alt+Tab interceptor active</div>
+        <div><span class="diag-check">✓</span> Real-time window blur &amp; tab-switch detection</div>
+        <div><span class="diag-check">✓</span> Instant remote termination &amp; forensic logging</div>
+        <div><span class="diag-check">✓</span> Strict Admin credential &amp; timer enforcement</div>
       </div>
     </div>
   </section>
  
-  <!-- ========== LIVE EXAM ARENA ========== -->
+  <!-- LIVE EXAM ARENA (Active Test Runner) -->
   <section id="liveExamView" class="live-exam-view" hidden>
  
     <div class="exam-security-banner">
-      <span class="sec-badge">PROCTORED</span>
+      <span class="sec-badge">AI PROCTORED</span>
       <p>
-        <strong>Strict anti-cheating is active.</strong>
-        Tab switching, window switching, shortcuts, right-click, copy/paste aur fullscreen exit
-        violation maana jayega aur exam <strong>foran terminate</strong> ho sakta hai.
+        <strong>Strict Anti-Cheat &amp; AI Sentinel Active.</strong>
+        Tab switching, shortcuts (Alt+Tab, Esc, Ctrl+C), right-click aur window minimize hone par AI Sentinel <strong>foran exam terminate</strong> kar ke Admin ko report bhej dega.
       </p>
     </div>
  
     <!-- Admin push warning -->
     <div id="adminWarningBanner" class="admin-warning-banner hidden" role="alert">
-      <span class="warn-badge">ADMIN WARNING</span>
+      <span class="warn-badge">SECURITY ALERT</span>
       <span id="adminWarningText">Please maintain full focus on the exam arena.</span>
       <button id="dismissWarningBtn" class="warn-ack-btn" type="button">Acknowledge</button>
     </div>
@@ -100,19 +157,19 @@
     <header class="exam-header">
       <div>
         <div class="eyebrow-row">
-          <div class="eyebrow">Live exam</div>
-          <span class="security-pill"><span class="security-dot"></span> Secure session</span>
+          <div class="eyebrow" id="examGroupHeaderBadge">Live Exam</div>
+          <span class="security-pill"><span class="security-dot"></span> AI Sentinel Guarding</span>
         </div>
-        <h2 id="subjectBadge">HTML</h2>
+        <h2 id="subjectBadge">Loading Subject...</h2>
         <p id="questionNumber">Question 1</p>
       </div>
       <div class="stats-grid">
         <div class="stat">
           <span class="stat-label">Time left</span>
-          <strong id="timer" class="stat-value">30:00</strong>
+          <strong id="timer" class="stat-value">60:00</strong>
         </div>
         <div class="stat">
-          <span class="stat-label">Answered</span>
+          <span class="stat-label">Progress</span>
           <strong id="score" class="stat-value">0 / 60</strong>
         </div>
       </div>
@@ -130,11 +187,20 @@
           <span id="flagBtnText">Flag for Review</span>
         </button>
       </div>
+
+      <!-- Current Section Notice -->
+      <div id="sectionBadgeBar" class="section-badge-bar">
+        <div class="section-badge-title">
+          <span>📌</span>
+          <span id="sectionTitleText">Section A: Objective Multiple Choice Questions</span>
+        </div>
+        <span id="sectionChoiceText" style="color:#94a3b8; font-size:0.75rem;">All compulsory</span>
+      </div>
  
       <!-- Question navigation matrix -->
       <div class="question-navigation">
         <div class="question-nav-header">
-          <span class="question-count">Questions</span>
+          <span class="question-count">Question Matrix</span>
           <div class="question-filter-pills">
             <button id="filterAll" class="filter-pill active" type="button">All (<span id="countAll">0</span>)</button>
             <button id="filterAnswered" class="filter-pill" type="button">Answered (<span id="countAnswered">0</span>)</button>
@@ -151,8 +217,8 @@
  
       <div class="exam-footer">
         <div class="footer-left">
-          <button id="toggleScratchpadBtn" class="scratchpad-toggle-btn" type="button">📝 Scratchpad</button>
-          <span>Answers lock once selected.</span>
+          <button id="toggleScratchpadBtn" class="scratchpad-toggle-btn" type="button">📝 Rough Scratchpad</button>
+          <span>Selection is saved automatically.</span>
         </div>
         <div class="exam-controls">
           <button id="previousQuestion" class="secondary-btn" type="button">← Previous</button>
@@ -167,21 +233,47 @@
           <div class="scratchpad-title">
             <span aria-hidden="true">📝</span>
             <div>
-              <strong>Scratchpad</strong>
-              <small>Private rough notes (not submitted)</small>
+              <strong>Candidate Rough Notes</strong>
+              <small>Private rough work (not graded)</small>
             </div>
           </div>
           <button id="closeScratchpadBtn" class="clear-notes-btn" type="button" aria-label="Close scratchpad">✕</button>
         </div>
-        <textarea id="scratchpadText" class="scratchpad-textarea" placeholder="Type your rough notes here..."></textarea>
+        <textarea id="scratchpadText" class="scratchpad-textarea" placeholder="Type your rough notes / calculations here..."></textarea>
         <div class="scratchpad-footer">
           <span id="scratchpadSavedNotice" class="scratchpad-saved-text">Saved</span>
           <button id="clearScratchpadBtn" class="clear-notes-btn" type="button">Clear notes</button>
         </div>
       </aside>
     </article>
+
+    <!-- AI PROCTOR SENTINEL & CHATBOT HUD -->
+    <div id="aiSentinelHud" class="ai-sentinel-hud">
+      <div id="aiSentinelBadge" class="ai-sentinel-badge" title="Click to view AI Proctor Sentinel status &amp; ask allowed questions">
+        <span id="aiEyeIndicator" class="ai-eye-indicator"></span>
+        <span class="ai-sentinel-text">AI PROCTOR: <em>ACTIVE SURVEILLANCE</em></span>
+      </div>
+
+      <div id="aiChatDrawer" class="ai-chat-drawer hidden">
+        <div class="ai-chat-header">
+          <span>🤖 AI Proctor Sentinel Assistant</span>
+          <button id="closeAiChatBtn" class="clear-notes-btn" type="button" style="color:#94a3b8;">✕</button>
+        </div>
+        <div id="aiChatBody" class="ai-chat-body">
+          <div class="ai-msg system">
+            <strong>AI Sentinel Online:</strong> I am monitoring this examination for integrity. All tabs, windows, and shortcuts are actively audited. What do you need help with?
+          </div>
+        </div>
+        <div class="ai-quick-prompts">
+          <button class="btn-ai-prompt" type="button" data-prompt="time">⏱️ Time Left?</button>
+          <button class="btn-ai-prompt" type="button" data-prompt="rules">📋 Exam Rules</button>
+          <button class="btn-ai-prompt" type="button" data-prompt="passing">🎯 Passing Score</button>
+          <button class="btn-ai-prompt" type="button" data-prompt="help">💡 Section Guide</button>
+        </div>
+      </div>
+    </div>
   </section>
  
-  <script src="Exam.js?v=22"></script>
+  <script src="Exam.js?v=24"></script>
 </body>
 </html>

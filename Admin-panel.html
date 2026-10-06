@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="SkillTester secure exam administration panel.">
   <title>SkillTester Admin Panel</title>
-  <link rel="stylesheet" href="style.css?v=17">
-  <link rel="stylesheet" href="Admin-panel.css?v=17">
+  <link rel="stylesheet" href="style.css?v=23">
+  <link rel="stylesheet" href="Admin-panel.css?v=23">
 </head>
 <body class="admin-page-body">
   <main class="admin-page">
@@ -18,7 +18,7 @@
           <h1>Admin Control Center</h1>
         </div>
       </div>
-      <p class="admin-intro">Sign in to manage student lifetime credentials, one-time codes, live surveillance radar, and forensic exam audits.</p>
+      <p class="admin-intro">Sign in to manage student lifetime credentials, one-time codes, live surveillance radar, and instant VVIP marksheet generation.</p>
       <form id="adminLoginForm" class="form-grid">
         <div class="field">
           <label for="adminCodeInput">Admin password</label>
@@ -44,7 +44,7 @@
         </div>
       </header>
 
-      <!-- VVIP Summary Analytics Cards -->
+      <!-- Summary Analytics Cards -->
       <section class="admin-summary" aria-label="Portal status">
         <article class="admin-stat-card">
           <span class="stat-label">Portal Security</span>
@@ -64,17 +64,17 @@
         </article>
       </section>
 
-      <!-- 🔥 VVIP FEATURE 1: LIVE ACTIVE EXAM RADAR -->
+      <!-- LIVE ACTIVE EXAM RADAR -->
       <section id="liveRadarSection" class="admin-section live-radar-section">
         <div class="admin-section-heading">
           <div>
             <p class="eyebrow">Real-Time Exam Arena Surveillance</p>
-            <h2>Live Active Candidates Radar</h2>
+            <h2>Live Active Candidates Radar &amp; AI Sentinel Feed</h2>
           </div>
           <span class="radar-pulse-badge"><span class="radar-dot"></span> Live Telemetry Active</span>
         </div>
         <p class="admin-section-copy" style="margin-bottom:12px;">
-          Yeh radar un tamam candidates ko live track karta hai jo is waqt exam attempt kar rahe hain. Aap live progress (Question &amp; Time) dekh sakte hain, <strong>Live Push Warning</strong> bhej sakte hain, ya remote <strong>Terminate</strong> kar sakte hain.
+          Yeh radar un tamam candidates ko live track karta hai jo is waqt exam attempt kar rahe hain. Aap live progress dekh sakte hain, <strong>Live Push Warning</strong> bhej sakte hain, ya cheating detect hone par remote <strong>Terminate</strong> kar sakte hain.
         </p>
         <div id="liveRadarContainer" class="radar-container">
           <p class="modal-copy" style="margin:0;">No candidate is currently active in the exam arena.</p>
@@ -86,6 +86,7 @@
         <button id="navPermanentTab" class="subnav-btn active" type="button">Permanent Lifetime IDs</button>
         <button id="navOneTimeTab" class="subnav-btn" type="button">One-Time Codes</button>
         <button id="navResultsTab" class="subnav-btn" type="button">Exam Results &amp; Analytics</button>
+        <button id="navMarksheetTab" class="subnav-btn gold-tab" type="button">👑 VVIP Marksheet &amp; Certification Hub</button>
       </nav>
 
       <!-- 1. PERMANENT LIFETIME ID SECTION -->
@@ -131,15 +132,25 @@
               <input id="permPhone" type="tel" inputmode="numeric" pattern="03[0-9]{9}" maxlength="11" placeholder="03xxxxxxxxx" required>
             </div>
             <div class="field">
-              <label for="permExam">Assigned Exam</label>
+              <label for="permExam">Assigned Exam Group</label>
               <select id="permExam" required>
-                <option value="All Subjects">All Subjects (HTML + CSS + JavaScript)</option>
-                <option value="HTML">HTML</option>
-                <option value="CSS">CSS</option>
-                <option value="JavaScript">JavaScript</option>
+                <option value="Computer Science Group">Computer Science Group (English, CS, Math, Physics)</option>
+                <option value="All Subjects">Web Development (HTML + CSS + JavaScript)</option>
+                <option value="English">English (Special Paper - Grammar &amp; MCQs)</option>
+                <option value="Computer Science">Computer Science (Theory &amp; Programming)</option>
+                <option value="Mathematics">Mathematics (Science Group)</option>
+                <option value="Physics">Physics (Scientific Principles)</option>
               </select>
             </div>
             <div class="field">
+              <label for="permDuration">Exam Duration Limit</label>
+              <select id="permDuration" required>
+                <option value="60">1 Hour (60 Minutes - Recommended)</option>
+                <option value="120">2 Hours (120 Minutes - Board Standard)</option>
+                <option value="30">30 Minutes (Sprint Assessment)</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
               <label for="permPassword">Lifetime Access Password (Fixed 999990)</label>
               <div class="input-with-action">
                 <input id="permPassword" type="text" value="999990" maxlength="15" readonly required>
@@ -188,15 +199,25 @@
             <div class="field"><label for="entryFatherName">Father name</label><input id="entryFatherName" type="text" maxlength="30" required></div>
             <div class="field"><label for="entryPhone">Mobile number</label><input id="entryPhone" type="tel" maxlength="11" required></div>
             <div class="field">
-              <label for="entryExam">Assigned exam</label>
+              <label for="entryExam">Assigned Exam Group</label>
               <select id="entryExam" required>
-                <option value="All Subjects">All Subjects (HTML + CSS + JavaScript)</option>
-                <option value="HTML">HTML</option>
-                <option value="CSS">CSS</option>
-                <option value="JavaScript">JavaScript</option>
+                <option value="Computer Science Group">Computer Science Group (English, CS, Math, Physics)</option>
+                <option value="All Subjects">Web Development (HTML + CSS + JavaScript)</option>
+                <option value="English">English (Special Paper)</option>
+                <option value="Computer Science">Computer Science (Theory)</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Physics">Physics</option>
               </select>
             </div>
-            <div class="field"><label for="entryPasscode">One-time code (optional)</label><input id="entryPasscode" type="password" maxlength="6"></div>
+            <div class="field">
+              <label for="entryDuration">Exam Duration</label>
+              <select id="entryDuration" required>
+                <option value="60">1 Hour (60 Minutes)</option>
+                <option value="120">2 Hours (120 Minutes)</option>
+                <option value="30">30 Minutes</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: 1 / -1;"><label for="entryPasscode">One-time code (optional)</label><input id="entryPasscode" type="password" maxlength="6"></div>
             <p id="entryError" class="form-error" role="alert"></p>
             <div class="admin-entry-actions">
               <div class="admin-entry-buttons">
@@ -222,7 +243,6 @@
 
       <!-- 3. RESULTS & FORENSIC AUDIT TAB -->
       <div id="resultsSectionWrap" class="admin-tab-content hidden">
-        <!-- VVIP Results KPI Performance Cards -->
         <div class="results-kpi-grid">
           <div class="kpi-card">
             <span class="kpi-label">Average Score</span>
@@ -250,10 +270,7 @@
             </div>
             <div class="results-toolbar-actions">
               <input id="resultSearch" type="search" placeholder="Search result by name or ID..." class="table-search">
-              <!-- 🔥 VVIP FEATURE: EXPORT TO CSV / EXCEL -->
-              <button id="exportCsvBtn" class="primary-btn export-btn" type="button">
-                📥 Export CSV / Excel
-              </button>
+              <button id="exportCsvBtn" class="primary-btn export-btn" type="button">📥 Export CSV / Excel</button>
             </div>
           </div>
           <p class="admin-section-copy">
@@ -263,10 +280,100 @@
         </section>
       </div>
 
+      <!-- 4. VVIP MARKSHEET & CERTIFICATION HUB -->
+      <div id="marksheetSectionWrap" class="admin-tab-content hidden">
+        <section class="admin-section">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow">Official Academic Documentation Engine</p>
+              <h2>👑 VVIP Marksheet &amp; Certification Generation Center</h2>
+            </div>
+            <span class="radar-pulse-badge" style="color:#fbbf24; border-color:#f59e0b;">Verified Academic Seal</span>
+          </div>
+          <p class="admin-section-copy">
+            Jo student <strong>Pass</strong> hota hai, uski foran <strong>VVIP Animated Marksheet &amp; Merit Certificate</strong> tayaar karain. Agar koi student <strong>Fail</strong> ho to uski <strong>Remedial / Retest Advice Slip</strong> banayein, aur agar cheating par <strong>Terminated</strong> ho to <strong>Disciplinary Penalty &amp; Fine Record</strong> generate karain.
+          </p>
+
+          <!-- Filter categories for marksheet generation -->
+          <div style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
+            <button id="filterMarksheetAll" class="subnav-btn active" type="button">All Candidates</button>
+            <button id="filterMarksheetPassed" class="subnav-btn" type="button">🎓 Passed (Generate VVIP Marksheet)</button>
+            <button id="filterMarksheetFailed" class="subnav-btn" type="button">📋 Failed (Remedial Notice)</button>
+            <button id="filterMarksheetTerminated" class="subnav-btn" type="button">🚨 Terminated (Disciplinary Penalty)</button>
+          </div>
+
+          <div id="marksheetCandidatesList" class="admin-list">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </section>
+
+        <!-- Instant Custom Marksheet Generator for any candidate -->
+        <section class="admin-section admin-issue-section">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow">On-Demand Issue</p>
+              <h2>Instant Manual Marksheet Generator</h2>
+            </div>
+            <span class="admin-section-icon" aria-hidden="true">📜</span>
+          </div>
+          <p class="admin-section-copy">
+            Admin kisi bhi student ki ID ya name likh kar direct on-the-spot official animated certificate generate kar sakta hai:
+          </p>
+          <form id="instantMarksheetForm" class="admin-entry-form">
+            <div class="field">
+              <label for="instId">Student ID</label>
+              <input id="instId" type="text" placeholder="e.g. ST-2026-VIP" required>
+            </div>
+            <div class="field">
+              <label for="instName">Student Full Name</label>
+              <input id="instName" type="text" placeholder="e.g. Muhammad Ali" required>
+            </div>
+            <div class="field">
+              <label for="instFather">Father Name</label>
+              <input id="instFather" type="text" placeholder="Father name" required>
+            </div>
+            <div class="field">
+              <label for="instPhone">Mobile Number</label>
+              <input id="instPhone" type="tel" placeholder="03xxxxxxxxx" required>
+            </div>
+            <div class="field">
+              <label for="instExam">Exam Group</label>
+              <select id="instExam" required>
+                <option value="Computer Science &amp; Technical Science Board">Computer Science &amp; Technical Science Board</option>
+                <option value="Web Development (HTML+CSS+JS)">Web Development (HTML+CSS+JS)</option>
+                <option value="English Compulsory (Special Paper)">English Compulsory (Special Paper)</option>
+                <option value="Mathematics &amp; Physics Dual Paper">Mathematics &amp; Physics Dual Paper</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="instMarks">Marks Obtained (out of 100)</label>
+              <input id="instMarks" type="number" min="0" max="100" value="88" required>
+            </div>
+            <div class="field">
+              <label for="instStatus">Official Status</label>
+              <select id="instStatus" required>
+                <option value="PASSED">PASSED (Merit Certificate)</option>
+                <option value="FAILED">FAILED (Remedial Advice)</option>
+                <option value="TERMINATED">TERMINATED (Disciplinary Penalty)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="instReason">Remarks / Forensic Note (Optional)</label>
+              <input id="instReason" type="text" placeholder="e.g. Distinction with Honors OR Caught by AI Proctor">
+            </div>
+            <div class="admin-entry-actions">
+              <button class="btn-generate-marksheet" style="font-size:0.9rem; padding:12px 24px;" type="submit">
+                🚀 Instant Generate &amp; Open VVIP Marksheet
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+
       <p id="adminNotice" class="admin-notice" role="status" aria-live="polite"></p>
     </section>
 
-    <!-- 🔥 VVIP FEATURE: CANDIDATE DETAILED AUDIT & ANSWER SHEET MODAL -->
+    <!-- Detailed Audit Modal -->
     <div id="auditModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auditModalTitle">
       <div class="audit-modal-content">
         <header class="audit-modal-header">
@@ -277,9 +384,7 @@
           <button id="closeAuditModalBtn" class="icon-close" type="button" aria-label="Close modal">×</button>
         </header>
 
-        <div id="auditModalBody" class="audit-modal-body">
-          <!-- Populated dynamically via JS -->
-        </div>
+        <div id="auditModalBody" class="audit-modal-body"></div>
 
         <footer class="audit-modal-footer">
           <button id="printAuditReportBtn" class="primary-btn" type="button">🖨️ Print Audit Sheet</button>
@@ -291,6 +396,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="Admin-panel.js?v=17"></script>
+  <script src="Admin-panel.js?v=23"></script>
 </body>
 </html>

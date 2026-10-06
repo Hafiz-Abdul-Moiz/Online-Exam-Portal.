@@ -20,7 +20,8 @@ localStorage.removeItem("skilltester_lockout");
 
 const state = {
   candidate: null,
-  exam: "All Subjects",
+  exam: "Computer Science Group",
+  durationMinutes: 60,
   score: 0,
   questionCount: 0,
   answerReview: [],
@@ -32,7 +33,8 @@ const state = {
   activeSessionListener: null,
   lastWarningSeen: 0,
   shortcutAttempts: 0,
-  maxShortcutAttempts: 4
+  maxShortcutAttempts: 3,
+  lastSavedResultKey: null
 };
 let audioContext = null;
 
@@ -55,7 +57,7 @@ function playSound(kind) {
     gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + duration);
     oscillator.connect(gain).connect(audioContext.destination);
     oscillator.start(); oscillator.stop(audioContext.currentTime + duration + 0.02);
-  } catch (error) { /* Sound progressive enhancement */ }
+  } catch (error) { /* Sound enhancement */ }
 }
 
 function toast(message, tone = "info") {
@@ -114,24 +116,43 @@ function isMobileDevice() {
 
 function bindSecurityDefaults() {
   document.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     if (state.examActive) {
-      event.preventDefault();
-      event.stopPropagation();
+      recordShortcutAttempt("Right-Click Context Menu");
     }
+    return false;
   }, true);
 
-  // Left click is allowed (button === 0); block other mouse buttons when exam is active
   const blockNonLeftClick = (event) => {
-    if (!state.examActive) return;
     if (event.button !== 0) {
       event.preventDefault();
       event.stopPropagation();
+      if (state.examActive) {
+        recordShortcutAttempt("Right/Auxiliary Mouse Click");
+      }
       return false;
     }
   };
   window.addEventListener("mousedown", blockNonLeftClick, true);
   window.addEventListener("mouseup", blockNonLeftClick, true);
   window.addEventListener("auxclick", blockNonLeftClick, true);
+
+  // Global developer tools & inspection shortcut prevention
+  window.addEventListener("keydown", (event) => {
+    const key = event.key || "";
+    const isFKey = /^F\d+$/.test(key) || (event.keyCode >= 112 && event.keyCode <= 123);
+    const isDangerousCtrl = event.ctrlKey && ["u", "s", "p", "r", "i", "j"].includes(key.toLowerCase());
+    const isPrintScreen = key === "PrintScreen" || event.keyCode === 44;
+    if (isFKey || isDangerousCtrl || isPrintScreen) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (state.examActive) {
+        recordShortcutAttempt(isPrintScreen ? "PrintScreen" : isFKey ? key : `Ctrl+${key}`);
+      }
+      return false;
+    }
+  }, true);
 }
 
 function recordShortcutAttempt(keyName) {
@@ -140,7 +161,7 @@ function recordShortcutAttempt(keyName) {
   const remaining = state.maxShortcutAttempts - state.shortcutAttempts;
 
   if (state.shortcutAttempts >= state.maxShortcutAttempts) {
-    terminateActiveExam(`Exam Terminated: Multiple unauthorized keyboard shortcut attempts detected (${state.shortcutAttempts} attempts: Escape/Restricted keys).`);
+    terminateActiveExam(`Exam Terminated: Multiple unauthorized keyboard shortcut attempts detected (${state.shortcutAttempts} attempts: ${keyName}).`);
   } else {
     const warningMsg = `⚠️ SECURITY WARNING (Attempt ${state.shortcutAttempts}/${state.maxShortcutAttempts}): Key '${keyName}' is BLOCKED! Keyboard shortcuts are locked. ${remaining} attempt(s) remaining before immediate EXAM TERMINATION!`;
     playSound("wrong");
@@ -160,13 +181,13 @@ function handleRestrictedKey(event) {
   const isFKey = /^F\d+$/.test(key) || (event.keyCode >= 112 && event.keyCode <= 123);
   const isAltCombo = event.altKey;
   const isMetaKey = event.metaKey;
-  const isDangerousCtrl = event.ctrlKey && ["u", "s", "p", "r", "w", "i", "j"].includes(key.toLowerCase());
+  const isDangerousCtrl = event.ctrlKey && ["u", "s", "p", "r", "w", "i", "j", "c", "v"].includes(key.toLowerCase());
 
   if (isEscape || isPrintScreen || isFKey || isAltCombo || isMetaKey || isDangerousCtrl) {
     event.preventDefault();
     event.stopPropagation();
     if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-    recordShortcutAttempt(isEscape ? "Escape (Esc)" : isPrintScreen ? "PrintScreen" : isFKey ? key : isAltCombo ? "Alt Shortcut" : isMetaKey ? "Windows Key" : `Ctrl+${key}`);
+    recordShortcutAttempt(isEscape ? "Escape" : isPrintScreen ? "PrintScreen" : isFKey ? key : isAltCombo ? "Alt Shortcut" : isMetaKey ? "Windows Key" : `Ctrl+${key}`);
     return false;
   }
 }
@@ -175,40 +196,33 @@ function bindAntiCheat() {
   if (state.antiCheatBound) return;
   state.antiCheatBound = true;
 
-  // 1. Fullscreen exit detection (clicking Chrome top X button or exiting Esc mode)
   document.addEventListener("fullscreenchange", () => {
     if (state.examActive && !state.finishing) {
       if (!document.fullscreenElement) {
-        terminateActiveExam("Exam Terminated: Fullscreen mode was exited via top (X) button or Escape.");
+        terminateActiveExam("Exam Terminated: Fullscreen mode was exited.");
       }
     }
   });
 
-  // 2. Genuine tab switch / minimization detection
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && state.examActive && !state.finishing) {
-      terminateActiveExam("Tab switch or background mode detected.");
+      terminateActiveExam("AI Sentinel Disqualification: Tab switch or background mode detected.");
     }
   });
 
-  // 3. Window blur: only terminate if user genuinely switched to another window/app
   window.addEventListener("blur", () => {
     if (!state.examActive || state.finishing) return;
     window.setTimeout(() => {
       if (!state.examActive || state.finishing) return;
       const activeEl = document.activeElement;
       const isExamIframe = activeEl && (activeEl.id === "examCardFrame" || activeEl.tagName === "IFRAME");
-      if (isExamIframe || !document.hidden) {
-        // Candidate is still inside the exam arena! Do NOT terminate!
-        return;
-      }
+      if (isExamIframe || !document.hidden) return;
       if (document.hidden) {
-        terminateActiveExam("Window focus lost or candidate switched away from exam.");
+        terminateActiveExam("AI Sentinel Disqualification: Candidate switched away from exam window.");
       }
     }, 300);
   });
 
-  // 4. Keyboard shortcut guard on parent window
   window.addEventListener("keydown", handleRestrictedKey, true);
 }
 
@@ -229,7 +243,7 @@ function sanitizeKey(key) {
   return String(key ?? "").replace(/[.#$\[\]]/g, "_").trim().toUpperCase();
 }
 
-function openRegistration() {
+function openRegistration(preselectedExam = "Computer Science Group") {
   if (state.examActive) {
     toast("Exam chal raha hai.", "info");
     return;
@@ -237,6 +251,7 @@ function openRegistration() {
   $("registrationModal").classList.add("open");
   $("registrationForm").reset();
   $("registrationError").textContent = "";
+  if ($("selectedExamGroup")) $("selectedExamGroup").value = preselectedExam;
   $("studentId").focus();
 }
 
@@ -257,7 +272,7 @@ function closeAdminPanel() {
   $("adminPanelFrame")?.contentWindow?.postMessage({ type: "skilltester:admin-closed" }, "*");
 }
 
-async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
+async function verifyPasscode(code, studentId, fullName, fatherName, phone, selectedExam) {
   const adminSnapshot = await database.ref("adminCode").once("value");
   const adminData = adminSnapshot.val() || {};
   if (adminData.isEnabled === false) {
@@ -271,19 +286,15 @@ async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
   const normPhone = String(phone || "").trim();
   const rawCode = String(code || "").trim();
 
-  // ==============================================================
-  // CASE A: Candidate entered the Lifetime Password "999990"
-  // STRICT RULE: Only students created in Form 2 (Permanent) can use 999990!
-  // ==============================================================
+  // CASE A: Permanent Lifetime Access Password "999990"
   if (rawCode === UNIVERSAL_LIFETIME_PASSWORD) {
     const permSnap = await database.ref(`permanentStudents/${studentKey}`).once("value");
     const permData = permSnap.val();
 
     if (!permData) {
-      // Check if this student belongs to Form 1 (One-Time)
       const oneTimeSnap = await database.ref(`studentIdToPasscode/${studentKey}`).once("value");
       if (oneTimeSnap.exists()) {
-        throw new Error(`Student ID "${studentId}" One-Time Form (Form 1) mein bani hui hai! Yeh Permanent ID nahi hai. Kripya apna 6-digit One-Time Code enter karein, 999990 nahi.`);
+        throw new Error(`Student ID "${studentId}" One-Time Form mein bani hui hai. Kripya apna 6-digit One-Time Code enter karein, 999990 nahi.`);
       }
       throw new Error(`Student ID "${studentId}" Permanent list (Form 2) mein registered nahi hai! Pehle Admin Panel se Form 2 mein Permanent ID create karein.`);
     }
@@ -302,7 +313,9 @@ async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
       throw new Error(`Mobile number match nahi hua! Registered number: "${permData.phone}".`);
     }
 
-    state.exam = permData.exam || "All Subjects";
+    state.exam = permData.exam || selectedExam || "Computer Science Group";
+    state.durationMinutes = permData.durationMinutes || 60;
+
     return {
       code: UNIVERSAL_LIFETIME_PASSWORD,
       studentId: permData.studentId || normStudentId,
@@ -310,26 +323,22 @@ async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
       fullName: permData.studentName,
       fatherName: permData.fatherName,
       phone: permData.phone,
-      exam: permData.exam || "All Subjects",
+      exam: state.exam,
+      durationMinutes: state.durationMinutes,
       isPermanent: true,
       studentKey
     };
   }
 
-  // ==============================================================
-  // CASE B: Candidate entered a One-Time Code (Form 1)
-  // STRICT RULE: Must be a valid 6-digit code created in Form 1 for THIS student!
-  // ==============================================================
+  // CASE B: One-Time 6-Digit Passcode
   if (!rawCode || rawCode.length < 4) {
     throw new Error("Kripya apna 6-digit One-Time Code ya Permanent Password (999990) enter karein.");
   }
 
-  // 1. Direct lookup in passcodes
   const codeSnap = await database.ref(`passcodes/${rawCode}`).once("value");
   const codeData = codeSnap.val();
 
   if (!codeData) {
-    // If student is actually a Permanent student who typed wrong code:
     const permSnap = await database.ref(`permanentStudents/${studentKey}`).once("value");
     if (permSnap.exists()) {
       throw new Error(`Yeh Permanent Student ID hai! Is ke liye Lifetime Password enter karein: "${UNIVERSAL_LIFETIME_PASSWORD}".`);
@@ -337,17 +346,14 @@ async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
     throw new Error(`Passcode "${rawCode}" exist nahi karta! Sahi 6-digit One-Time Code enter karein.`);
   }
 
-  // 2. Check if code has already been used
   if (codeData.isUsed === true) {
-    throw new Error(`Yeh One-Time Code (${rawCode}) pehle use ho chuka hai! Ek code sirf ek dafa use ho sakta hai.`);
+    throw new Error(`Yeh One-Time Code (${rawCode}) pehle use ho chuka hai!`);
   }
 
-  // 3. Check if expired by time
   if (Number(codeData.expiresAt || Infinity) <= Date.now()) {
     throw new Error("Yeh access code expire ho chuka hai.");
   }
 
-  // 4. Verify that this specific code belongs to this student
   if (codeData.studentId && codeData.studentId.trim().toUpperCase() !== normStudentId) {
     throw new Error(`Yeh code Student ID "${normStudentId}" ka nahi hai! Yeh code Student ID "${codeData.studentId}" ko issue hua tha.`);
   }
@@ -364,14 +370,16 @@ async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
     throw new Error(`Mobile number match nahi hua! Registered number: "${codeData.phone}".`);
   }
 
-  // 5. Mark THIS one-time code as used in Firebase
+  // Mark code as used
   await database.ref(`passcodes/${rawCode}`).update({
     isUsed: true,
     usedAt: firebase.database.ServerValue.TIMESTAMP,
     status: "used"
   });
 
-  state.exam = codeData.exam || "All Subjects";
+  state.exam = codeData.exam || selectedExam || "Computer Science Group";
+  state.durationMinutes = codeData.durationMinutes || 60;
+
   return {
     code: rawCode,
     studentId: codeData.studentId || normStudentId,
@@ -379,7 +387,8 @@ async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
     fullName: codeData.studentName || fullName,
     fatherName: codeData.fatherName || fatherName,
     phone: codeData.phone || phone,
-    exam: codeData.exam || "All Subjects",
+    exam: state.exam,
+    durationMinutes: state.durationMinutes,
     isPermanent: false
   };
 }
@@ -390,6 +399,7 @@ async function submitRegistration(event) {
   const fullName = $("fullName").value.trim();
   const fatherName = $("fatherName").value.trim();
   const phone = $("candidatePhone").value.trim();
+  const selectedExam = $("selectedExamGroup")?.value || "Computer Science Group";
   const code = $("accessCode").value.trim();
   const error = $("registrationError");
   error.textContent = "";
@@ -414,11 +424,10 @@ async function submitRegistration(event) {
   $("registrationSubmit").disabled = true;
 
   try {
-    const assignedEntry = await verifyPasscode(code, studentId, fullName, fatherName, phone);
+    const assignedEntry = await verifyPasscode(code, studentId, fullName, fatherName, phone, selectedExam);
     state.candidate = assignedEntry;
     closeRegistration();
 
-    // Enter Fullscreen officially ONLY when verification succeeds!
     await requestExamFullscreen();
     await runLoadingSequence();
     hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
@@ -430,8 +439,9 @@ async function submitRegistration(event) {
       studentName: assignedEntry.fullName,
       fullName: assignedEntry.fullName,
       exam: state.exam,
+      durationMinutes: state.durationMinutes,
       currentQuestion: 1,
-      secondsLeft: 1800,
+      secondsLeft: state.durationMinutes * 60,
       isPermanent: assignedEntry.isPermanent,
       startedAt: firebase.database.ServerValue.TIMESTAMP
     });
@@ -463,14 +473,15 @@ async function submitRegistration(event) {
 
     $("examCardFrame").contentWindow.postMessage({
       type: "skilltester:start-exam",
-      exam: state.exam
+      exam: state.exam,
+      durationMinutes: state.durationMinutes
     }, "*");
-  } catch (verificationError) {
+  } catch (err) {
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});
     }
     $("loaderScreen").classList.remove("open");
-    error.textContent = verificationError.message || "Passcode verification failed.";
+    error.textContent = err.message || "Passcode verification failed.";
   } finally {
     $("registrationSubmit").disabled = false;
   }
@@ -479,23 +490,23 @@ async function submitRegistration(event) {
 function runLoadingSequence() {
   playSound("loading");
   $("loaderTitle").textContent = "Verifying Passcode...";
-  $("loaderText").textContent = "Checking secure access status";
-  $("loaderProgress").style.width = "20%";
+  $("loaderText").textContent = "Authenticating candidate identity";
+  $("loaderProgress").style.width = "25%";
   $("loaderScreen").classList.add("open");
   return new Promise((resolve) => {
     window.setTimeout(() => {
-      $("loaderTitle").textContent = "Arming High-Security AI Proctor Guard...";
-      $("loaderText").textContent = "Locking display & syncing live telemetrics";
+      $("loaderTitle").textContent = "Initializing AI Proctor Sentinel...";
+      $("loaderText").textContent = "Arming screen surveillance & real-time telemetry";
       $("loaderProgress").style.width = "100%";
       document.querySelectorAll(".loader-step")[0]?.classList.remove("active");
       document.querySelectorAll(".loader-step")[1]?.classList.add("active");
-    }, 800);
+    }, 700);
     window.setTimeout(() => {
       document.querySelectorAll(".loader-step")[1]?.classList.remove("active");
       document.querySelectorAll(".loader-step")[2]?.classList.add("active");
       $("loaderScreen").classList.remove("open");
       resolve();
-    }, 1600);
+    }, 1500);
   });
 }
 
@@ -522,23 +533,37 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
     ? result.questionCount
     : state.questionCount;
   state.answerReview = !cheating && Array.isArray(result.answerReview)
-    ? result.answerReview.filter((item) => item &&
-      typeof item.subject === "string" &&
-      typeof item.question === "string" &&
-      (typeof item.selectedAnswer === "string" || item.selectedAnswer === null) &&
-      typeof item.correctAnswer === "string")
+    ? result.answerReview.filter((item) => item && typeof item.subject === "string")
     : [];
   renderAnswerReview(state.answerReview);
   sessionStorage.removeItem(SESSION_KEY);
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
   const finalMarks = calculateMarks(state.score);
 
+  const status = cheating ? "TERMINATED" : finalMarks < PASSING_SCORE ? "FAILED" : "PASSED";
+
+  const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
+  const studentId = state.candidate?.studentId || "—";
+  const fatherName = state.candidate?.fatherName || "—";
+  const phone = state.candidate?.phone || "—";
+  const exam = state.exam || "Computer Science Group";
+
+  const immediateParams = `studentId=${encodeURIComponent(studentId)}&name=${encodeURIComponent(actualName)}&father=${encodeURIComponent(fatherName)}&phone=${encodeURIComponent(phone)}&exam=${encodeURIComponent(exam)}&marks=${encodeURIComponent(finalMarks)}&status=${encodeURIComponent(status)}&reason=${encodeURIComponent(reason)}`;
+  const vipLink = $("openVipMarksheetBtn");
+  const disLink = $("viewDisciplinaryRecordBtn");
+  if (vipLink) vipLink.href = `Marksheet.html?${immediateParams}`;
+  if (disLink) disLink.href = `Marksheet.html?${immediateParams}`;
+
+  saveExamResult(finalMarks, status, reason, result, (savedKey) => {
+    state.lastSavedResultKey = savedKey;
+    if (vipLink) vipLink.href = `Marksheet.html?resultKey=${encodeURIComponent(savedKey)}&${immediateParams}`;
+    if (disLink) disLink.href = `Marksheet.html?resultKey=${encodeURIComponent(savedKey)}&${immediateParams}`;
+  });
+
   if (cheating || finalMarks < PASSING_SCORE) {
-    saveExamResult(finalMarks, cheating ? "TERMINATED" : "FAILED", reason, result);
     playSound("failure");
     renderFailure(reason, cheating);
   } else {
-    saveExamResult(finalMarks, "PASSED", reason, result);
     playSound("success");
     renderResult();
   }
@@ -550,7 +575,7 @@ function terminateActiveExam(reason) {
   finalizeExamResult(reason, true);
 }
 
-function saveExamResult(finalMarks, status, reason, extra = {}) {
+function saveExamResult(finalMarks, status, reason, extra = {}, callback) {
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   const studentId = state.candidate?.studentId || "—";
   const isPermanent = state.candidate?.isPermanent === true;
@@ -583,28 +608,18 @@ function saveExamResult(finalMarks, status, reason, extra = {}) {
     createdAt: firebase.database.ServerValue.TIMESTAMP
   };
 
-  database.ref("examResults").push(resultPayload).catch(() => {});
+  const newRef = database.ref("examResults").push();
+  newRef.set(resultPayload).then(() => {
+    if (callback) callback(newRef.key);
+  }).catch(() => {});
 }
 
 function renderFailure(reason, cheating) {
-  hide("examView"); hide("homeView"); hide("failureView"); show("resultView");
-  $("scorecard").classList.remove("hidden");
-  const finalMarks = calculateMarks(state.score);
-  const percentage = finalMarks;
-  $("scorecard").classList.add("result-failed");
-  $("resultIcon").textContent = "!";
-  $("resultEyebrow").textContent = cheating ? "Security termination" : "Assessment complete";
-  $("resultHeading").textContent = cheating ? "Exam Terminated" : "Exam failed: pass mark not reached.";
-  $("resultSubtitle").textContent = reason || "Session closed.";
-  
-  const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
-  $("resultName").textContent = actualName;
-  $("resultFather").textContent = state.candidate?.fatherName || "—";
-  $("resultScore").textContent = `${finalMarks} / ${EXAM_TOTAL_MARKS}`;
-  $("resultPercentage").textContent = `${percentage}%`;
-  $("resultRating").textContent = cheating ? "TERMINATED" : "FAILED";
+  hide("examView"); hide("homeView"); hide("resultView"); show("failureView");
+  const failReasonEl = $("failureReason");
+  if (failReasonEl) failReasonEl.textContent = reason || "Exam session cancelled.";
   loadLiveResults();
-  window.setTimeout(() => $("resultView").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  window.setTimeout(() => $("failureView").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 
 function renderResult() {
@@ -619,11 +634,11 @@ function renderResult() {
   $("resultFather").textContent = state.candidate?.fatherName || "—";
   $("resultScore").textContent = `${finalMarks} / ${EXAM_TOTAL_MARKS}`;
   $("resultPercentage").textContent = `${percentage}%`;
-  $("resultRating").textContent = percentage >= 90 ? "Outstanding" : percentage >= 75 ? "Excellent" : "Qualified";
+  $("resultRating").textContent = percentage >= 85 ? "Distinction" : percentage >= 70 ? "First Class" : "Qualified";
   $("resultIcon").textContent = "✓";
-  $("resultEyebrow").textContent = "Assessment passed";
-  $("resultHeading").textContent = "Congratulations, you passed.";
-  $("resultSubtitle").textContent = "Your verified result card is ready. Download it below.";
+  $("resultEyebrow").textContent = "Assessment Passed";
+  $("resultHeading").textContent = "Congratulations, you passed!";
+  $("resultSubtitle").textContent = "Your official VVIP Animated Marksheet and Certificate is generated. Click below to view.";
   loadLiveResults();
   window.setTimeout(() => $("resultView").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
@@ -648,11 +663,19 @@ async function loadLiveResults() {
     const results = Object.values(snapshot.val() || {}).reverse();
     list.innerHTML = results.map((result) => {
       const studentName = result.candidate?.fullName || result.candidate?.studentName || result.studentName || "Student";
-      return `<div class="public-result-row"><span><strong>${escapeHtml(studentName)}</strong><small>${escapeHtml(result.status || "UNKNOWN")}</small></span><strong class="public-result-score">${escapeHtml(result.marks ?? "-")} / ${EXAM_TOTAL_MARKS}</strong></div>`;
+      const isPassed = result.status === "PASSED";
+      return `
+        <div class="public-result-row">
+          <span>
+            <strong>${escapeHtml(studentName)}</strong>
+            <small>${escapeHtml(result.candidate?.exam || result.exam || "CS Group")} · ${escapeHtml(result.status || "UNKNOWN")}</small>
+          </span>
+          <strong class="public-result-score" style="color:${isPassed ? "#4ade80" : "#f87171"};">${escapeHtml(result.marks ?? "-")} / ${EXAM_TOTAL_MARKS}</strong>
+        </div>`;
     }).join("");
     status.textContent = results.length ? "Latest results live Firebase se update ho rahe hain." : "Abhi koi exam result available nahi hai.";
   } catch (error) {
-    status.textContent = "Live results load nahi ho sake. Refresh karke dobara try karein.";
+    status.textContent = "Live results load nahi ho sake.";
   }
 }
 
@@ -664,9 +687,10 @@ function goHome(event) {
 }
 
 function goExam(event) {
-  event.preventDefault();
+  if (event) event.preventDefault();
   if (state.examActive) { $("examView").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
+  $("examCardFrame")?.contentWindow?.postMessage({ type: "skilltester:reset-overview" }, "*");
   $("examView").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -678,7 +702,11 @@ function goResults(event) {
   $("resultView").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-$("startButton").addEventListener("click", openRegistration);
+$("startButton")?.addEventListener("click", (e) => {
+  if (e) e.preventDefault();
+  goExam();
+});
+
 $("closeRegistration").addEventListener("click", closeRegistration);
 $("registrationForm").addEventListener("submit", submitRegistration);
 $("adminButton").addEventListener("click", openAdminPanel);
@@ -695,48 +723,37 @@ window.addEventListener("message", (event) => {
       toast("Exam pehle se chal raha hai.", "danger");
       return;
     }
-    hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
-    openRegistration();
+    openRegistration(message.exam || "Computer Science Group");
   } else if (message.type === "skilltester:exam-started") {
     if (!state.candidate) {
       frame.contentWindow.postMessage({
         type: "skilltester:terminate-exam",
         reason: "Secure exam session could not be started."
       }, "*");
-      toast("Secure exam session could not be started.", "danger");
       return;
     }
     state.examActive = true;
     state.finishing = false;
     state.shortcutAttempts = 0;
     state.score = 0;
-    state.questionCount = Number.isInteger(message.questionCount) && message.questionCount > 0
-      ? message.questionCount
-      : 0;
+    state.questionCount = Number.isInteger(message.questionCount) ? message.questionCount : 60;
     document.body.classList.add("exam-in-progress");
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ candidate: state.candidate, startedAt: Date.now() }));
     bindAntiCheat();
   } else if (message.type === "skilltester:shortcut-attempt" && state.examActive) {
     recordShortcutAttempt(message.key);
   } else if (message.type === "skilltester:exam-progress" && state.examActive) {
-    if (!Number.isInteger(message.correctAnswers) || !Number.isInteger(message.questionCount) ||
-        message.questionCount < 1 || message.correctAnswers < 0 ||
-        message.correctAnswers > message.questionCount) return;
-    state.score = message.correctAnswers;
-    state.questionCount = message.questionCount;
-
+    state.score = message.correctAnswers || 0;
+    state.questionCount = message.questionCount || 60;
     if (state.activeSessionId) {
       database.ref(`activeExamSessions/${state.activeSessionId}`).update({
         currentQuestion: message.currentQuestion || 1,
-        secondsLeft: message.secondsLeft || 1800,
+        secondsLeft: message.secondsLeft || 3600,
         score: message.correctAnswers
       }).catch(() => {});
     }
   } else if (message.type === "skilltester:exam-finished" && state.examActive) {
     finalizeExamResult(message.reason || "Exam completed.", message.cheating === true, message);
-  } else if (message.type === "skilltester:exam-error") {
-    toast(typeof message.message === "string" ? message.message : "Exam could not be started.", "danger");
-    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
   }
 });
 
@@ -751,3 +768,10 @@ $("accessCode").addEventListener("input", (event) => { event.target.value = even
 
 bindSecurityDefaults();
 loadLiveResults();
+
+try {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("openAdmin") === "true") {
+    openAdminPanel();
+  }
+} catch (e) {}

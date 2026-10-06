@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Official VVIP Verified Marksheet & Certification Center">
+  <title>SkillTester Official Marksheet & Certificate of Excellence</title>
+  <link rel="stylesheet" href="Marksheet.css?v=2">
+</head>
+<body class="marksheet-body">
+  <div class="marksheet-container">
+    <!-- Top Action Toolbar -->
+    <header class="marksheet-toolbar">
+      <div class="toolbar-brand">
+        <span>👑</span>
+        <span>SkillTester Examination &amp; Certification Authority</span>
+      </div>
+      <div class="toolbar-actions">
+        <button id="backNavBtn" class="btn-tool" type="button" title="Back to Exam Portal in same tab">← Back to Portal / Arena</button>
+        <button id="adminNavBtn" class="btn-tool" type="button" title="Open Admin Command Center in same tab">⚙️ Admin Center</button>
+        <button id="copyLinkBtn" class="btn-tool" type="button">🔗 Share Link</button>
+        <button id="printMarksheetBtn" class="btn-tool primary-gold" type="button">🖨️ Print / Download Marksheet</button>
+      </div>
+    </header>
+
+    <!-- Student Quick Search Strip -->
+    <div class="lookup-bar">
+      <input id="verifySearchInput" type="text" placeholder="Verify any Student ID (e.g. ST-1001) or Name..." />
+      <button id="verifySearchBtn" class="btn-tool" type="button">🔍 Verify ID</button>
+    </div>
+
+    <!-- MAIN VVIP MARKSHEET / CERTIFICATE CARD -->
+    <main id="marksheetCard" class="marksheet-card">
+      <div class="watermark-bg">SKILLTESTER 2026</div>
+
+      <!-- Header with Board Stamp & QR -->
+      <div class="marksheet-header">
+        <div class="board-logo">ST</div>
+        <div class="board-titles">
+          <p class="sup-title">Autonomous Board of Technical &amp; Scientific Examinations</p>
+          <h1 id="docMainTitle">Official Provisional Marksheet</h1>
+          <p class="sub-title">Annual Examination Session 2026 · Verified Academic Transcript</p>
+        </div>
+        <div class="qr-stamp-box">
+          <div class="qr-dummy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
+              <rect x="2" y="2" width="8" height="8" rx="1"/>
+              <rect x="14" y="2" width="8" height="8" rx="1"/>
+              <rect x="2" y="14" width="8" height="8" rx="1"/>
+              <rect x="15" y="15" width="3" height="3"/>
+              <line x1="14" y1="21" x2="22" y2="21"/>
+              <line x1="21" y1="14" x2="21" y2="17"/>
+            </svg>
+          </div>
+          <span class="qr-caption">QR Verified</span>
+        </div>
+      </div>
+
+      <!-- Mode Specific Banners (Injected dynamically for Failed / Terminated) -->
+      <div id="statusSpecificBanner"></div>
+
+      <!-- Candidate Profile Grid -->
+      <section class="candidate-bio-grid" aria-label="Candidate details">
+        <div class="bio-item">
+          <span class="bio-label">Candidate Full Name</span>
+          <strong id="studentNameDisplay" class="bio-value">Loading...</strong>
+        </div>
+        <div class="bio-item">
+          <span class="bio-label">Permanent / Roll Number</span>
+          <strong id="studentIdDisplay" class="bio-value"><code>—</code></strong>
+        </div>
+        <div class="bio-item">
+          <span class="bio-label">Father's Name</span>
+          <strong id="fatherNameDisplay" class="bio-value">—</strong>
+        </div>
+        <div class="bio-item">
+          <span class="bio-label">Registered Mobile</span>
+          <strong id="phoneDisplay" class="bio-value">—</strong>
+        </div>
+        <div class="bio-item">
+          <span class="bio-label">Examination Group</span>
+          <strong id="examGroupDisplay" class="bio-value">—</strong>
+        </div>
+        <div class="bio-item">
+          <span class="bio-label">Credential Access Mode</span>
+          <strong id="accessModeDisplay" class="bio-value">—</strong>
+        </div>
+        <div class="bio-item">
+          <span class="bio-label">Certificate Serial Number</span>
+          <strong id="certSerialDisplay" class="bio-value"><code>—</code></strong>
+        </div>
+        <div class="bio-item">
+          <span class="bio-label">Attestation &amp; Verification Date</span>
+          <strong id="issueDateDisplay" class="bio-value">—</strong>
+        </div>
+      </section>
+
+      <!-- Detailed Subjects Marks Table -->
+      <section class="marks-table-wrap">
+        <table class="marks-table">
+          <thead>
+            <tr>
+              <th>Sr.</th>
+              <th>Subject / Component</th>
+              <th>Maximum Marks</th>
+              <th>Marks Obtained</th>
+              <th>Grade</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="marksTableBody">
+            <!-- Dynamically populated via Marksheet.js -->
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="2">Aggregate Grand Total</td>
+              <td id="grandTotalMax">100</td>
+              <td id="grandTotalObtained">0</td>
+              <td id="grandOverallGrade">—</td>
+              <td id="grandStatusText">—</td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+
+      <!-- KPI Summary Cards -->
+      <section class="performance-summary-box">
+        <div class="stat-pill">
+          <span class="stat-pill-label">Final Score</span>
+          <strong id="kpiMarks" class="stat-pill-val gold">— / 100</strong>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-pill-label">Percentage</span>
+          <strong id="kpiPercentage" class="stat-pill-val gold">—%</strong>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-pill-label">Academic Verdict</span>
+          <strong id="kpiVerdict" class="stat-pill-val passed">PASSED</strong>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-pill-label">Standing Rank</span>
+          <strong id="kpiStanding" class="stat-pill-val">First Class</strong>
+        </div>
+      </section>
+
+      <!-- Official Signatures & Seal -->
+      <footer class="signatures-row">
+        <div class="sig-box">
+          <div class="sig-img-container">
+            <img src="my-sign.svg" alt="Official Signature of Hafiz Abdul Moiz - Admin" class="official-signature-img" />
+          </div>
+          <strong class="sig-name">Hafiz Abdul Moiz</strong>
+          <p class="sig-title">Admin &amp; Controller of Examinations</p>
+          <small class="sig-subnote">Digital Auth: HAM-ADMIN-2026</small>
+        </div>
+
+        <div class="official-seal-badge">
+          <div class="seal-circle">
+            SkillTester<br>Official<br>Seal 2026
+          </div>
+          <small style="color:var(--text-muted); font-size:0.7rem; font-weight:700;">Government Accredited · ISO 9001</small>
+        </div>
+
+        <div class="sig-box">
+          <div class="sig-img-container">
+            <img src="my-sign.svg" alt="Official Signature of Hafiz Abdul Moiz - Head" class="official-signature-img" />
+          </div>
+          <strong class="sig-name">Hafiz Abdul Moiz</strong>
+          <p class="sig-title">Academic Head &amp; Board Authority</p>
+          <small class="sig-subnote">Official Stamp &amp; Attestation</small>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="Marksheet.js?v=2"></script>
+</body>
+</html>

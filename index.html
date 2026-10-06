@@ -8,9 +8,30 @@
   <meta http-equiv="Expires" content="0">
   <meta name="description" content="Secure HTML, CSS and JavaScript examination portal with lifetime student IDs.">
   <title>SkillTester Exam Portal</title>
-  <link rel="stylesheet" href="style.css?v=13">
-  <link rel="stylesheet" href="Exam.css?v=13">
-  <link rel="stylesheet" href="Admin-panel.css?v=13">
+  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="Exam.css?v=22">
+  <link rel="stylesheet" href="Admin-panel.css?v=22">
+  <style>
+    /* Full-width responsive Exam View & Proctored Arena Frame */
+    #examView.view, .exam-wrap {
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      min-height: calc(100vh - 65px) !important;
+      box-sizing: border-box !important;
+    }
+    #examCardFrame, .exam-card-frame {
+      width: 100% !important;
+      min-width: 100% !important;
+      height: calc(100vh - 65px) !important;
+      min-height: 88vh !important;
+      border: 0 !important;
+      display: block !important;
+      background: #090d16 !important;
+      box-sizing: border-box !important;
+    }
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -58,8 +79,8 @@
         </div>
       </section>
 
-      <section id="examView" class="view exam-wrap">
-        <iframe id="examCardFrame" class="exam-card-frame" src="Exam.html" title="Exam"></iframe>
+      <section id="examView" class="view exam-wrap" style="width: 100%; max-width: 100%; min-height: calc(100vh - 65px); padding: 0; margin: 0; box-sizing: border-box;">
+        <iframe id="examCardFrame" class="exam-card-frame" src="Exam.html" title="SkillTester Proctored Exam Arena" style="width: 100%; min-width: 100%; height: calc(100vh - 65px); min-height: 88vh; border: 0; display: block; background: #090d16; box-sizing: border-box;"></iframe>
       </section>
 
       <section id="resultView" class="view">
@@ -115,15 +136,15 @@
       <form id="registrationForm" class="form-grid">
         <div class="field">
           <label for="studentId">Student ID</label>
-          <input id="studentId" name="studentId" type="text" maxlength="30" autocomplete="off" required>
+          <input id="studentId" name="studentId" type="text" maxlength="30" autocomplete="off" placeholder="e.g. ST-1001" required>
         </div>
         <div class="field">
           <label for="fullName">Student Name</label>
-          <input id="fullName" name="fullName" type="text" maxlength="30" autocomplete="name" pattern="[A-Za-z ]{2,30}" title="Use letters and spaces only, maximum 30 characters." required>
+          <input id="fullName" name="fullName" type="text" maxlength="30" autocomplete="name" pattern="[A-Za-z ]{2,30}" title="Use letters and spaces only, maximum 30 characters." placeholder="Student name" required>
         </div>
         <div class="field">
           <label for="fatherName">Father Name</label>
-          <input id="fatherName" name="fatherName" type="text" maxlength="30" pattern="[A-Za-z ]{2,30}" title="Use letters and spaces only, maximum 30 characters." required>
+          <input id="fatherName" name="fatherName" type="text" maxlength="30" pattern="[A-Za-z ]{2,30}" title="Use letters and spaces only, maximum 30 characters." placeholder="Father name" required>
         </div>
         <div class="field">
           <label for="candidatePhone">Pakistani Mobile Number</label>
@@ -175,6 +196,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

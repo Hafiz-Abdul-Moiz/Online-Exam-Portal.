@@ -3,145 +3,185 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SkillTester proctored exam arena.">
   <title>SkillTester Proctored Exam Arena</title>
-  <link rel="stylesheet" href="style.css?v=17">
-  <link rel="stylesheet" href="Exam.css?v=17">
+  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="Exam.css?v=22">
+  <style>
+    /* hidden attribute / class must always win over display:grid / flex in Exam.css */
+    [hidden], .hidden { display: none !important; }
+ 
+    /* Zero-specificity fallbacks (style.css overrides these if it defines them) */
+    :where(.primary-btn) {
+      background: #3b82f6; color: #fff; border: 0; border-radius: 10px;
+      padding: 0.8rem 1.6rem; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    }
+    :where(.secondary-btn) {
+      background: #1f2937; color: #e5e7eb; border: 1px solid #374151; border-radius: 10px;
+      padding: 0.8rem 1.4rem; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    }
+    :where(.primary-btn:disabled, .secondary-btn:disabled) { opacity: 0.45; cursor: not-allowed; }
+    :where(.progress-track) { height: 6px; background: #1f2937; border-radius: 9999px; overflow: hidden; margin-top: 1rem; }
+    :where(.progress-fill) { height: 100%; width: 0; background: #3b82f6; transition: width 0.25s; }
+    @keyframes pulseAnim { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  </style>
 </head>
 <body class="exam-page-body">
-  <main class="exam-overview">
-    <!-- VVIP Exam Landing & Readiness Card -->
-    <article class="exam-overview-card">
+ 
+  <!-- ========== EXAM OVERVIEW CARD (click Begin -> registration form opens in parent) ========== -->
+  <section id="examOverviewCard" class="exam-overview">
+    <div class="exam-overview-card">
       <div class="exam-overview-copy">
-        <div class="eyebrow">Proctored Assessment Arena / 2026</div>
-        <h1>Front-End Certification Exam</h1>
-        <p>A rigorous, timed skills evaluation covering modern HTML5, CSS3, and JavaScript ES6+. Choose questions in any order, bookmark tricky questions for review, and submit when ready.</p>
-        
+        <div class="eyebrow">Proctored assessment / 2026</div>
+        <h1>SkillTester Certification Exam</h1>
+        <p>
+          Yeh ek timed, proctored assessment hai jisme HTML, CSS aur JavaScript ke 60 practical
+          concept-check MCQs hain. Exam shuru karne se pehle apni details aur access passcode verify karwayein.
+        </p>
+ 
         <div class="exam-overview-stats">
+          <span><strong>60</strong> MCQs</span>
           <span><strong>30</strong> Minutes</span>
-          <span><strong>60</strong> Concept Checks</span>
           <span><strong>50 / 100</strong> To Pass</span>
         </div>
-
-        <!-- Subject Overview Cards -->
+ 
         <div class="exam-subject-cards">
-          <div class="exam-subject-card"><span class="exam-subject-icon" aria-hidden="true">&lt;/&gt;</span><div><strong>HTML5</strong><small>20 Questions</small></div></div>
-          <div class="exam-subject-card"><span class="exam-subject-icon" aria-hidden="true">#</span><div><strong>CSS3</strong><small>20 Questions</small></div></div>
-          <div class="exam-subject-card"><span class="exam-subject-icon" aria-hidden="true">{ }</span><div><strong>JavaScript</strong><small>20 Questions</small></div></div>
+          <div class="exam-subject-card">
+            <div class="exam-subject-icon">&lt;/&gt;</div>
+            <div><strong>HTML</strong><small>20 Questions</small></div>
+          </div>
+          <div class="exam-subject-card">
+            <div class="exam-subject-icon">{ }</div>
+            <div><strong>CSS</strong><small>20 Questions</small></div>
+          </div>
+          <div class="exam-subject-card">
+            <div class="exam-subject-icon">JS</div>
+            <div><strong>JavaScript</strong><small>20 Questions</small></div>
+          </div>
         </div>
-
-        <!-- VVIP FEATURE: LIVE SYSTEM & PROCTOR DIAGNOSTICS -->
+ 
         <div class="proctor-diagnostics-panel">
-          <div class="diag-header"><span class="diag-pulse"></span> <strong>Live Pre-Exam Security &amp; Diagnostics Scan:</strong></div>
+          <div class="diag-header">
+            <span class="diag-pulse"></span>
+            <strong>Proctor diagnostics</strong>
+          </div>
           <div class="diag-grid">
-            <div class="diag-item"><span class="diag-check">✓</span> Keyboard Firewall: <strong>100% ISOLATED</strong></div>
-            <div class="diag-item"><span class="diag-check">✓</span> Mouse Controller: <strong>LEFT-CLICK ONLY</strong></div>
-            <div class="diag-item"><span class="diag-check">✓</span> Live Admin Telemetry: <strong>ONLINE &amp; ARMED</strong></div>
-            <div class="diag-item"><span class="diag-check">✓</span> Anti-Cheating Protocol: <strong>VERIFIED CLEAN</strong></div>
+            <div><span class="diag-check">✓</span> Secure session lock ready</div>
+            <div><span class="diag-check">✓</span> Tab-switch monitoring active</div>
+            <div><span class="diag-check">✓</span> Keyboard &amp; right-click protection</div>
+            <div><span class="diag-check">✓</span> Live admin surveillance enabled</div>
           </div>
         </div>
-
-        <button id="beginExamButton" class="primary-btn" type="button">START EXAM NOW</button>
+ 
+        <button id="beginExamButton" class="primary-btn" type="button">BEGIN EXAM</button>
       </div>
-
-      <div class="exam-overview-art" aria-hidden="true">
-        <div class="exam-overview-orbit"><span>&lt;/&gt;</span></div>
-        <div class="exam-overview-sparkle">✦</div>
+    </div>
+  </section>
+ 
+  <!-- ========== LIVE EXAM ARENA ========== -->
+  <section id="liveExamView" class="live-exam-view" hidden>
+ 
+    <div class="exam-security-banner">
+      <span class="sec-badge">PROCTORED</span>
+      <p>
+        <strong>Strict anti-cheating is active.</strong>
+        Tab switching, window switching, shortcuts, right-click, copy/paste aur fullscreen exit
+        violation maana jayega aur exam <strong>foran terminate</strong> ho sakta hai.
+      </p>
+    </div>
+ 
+    <!-- Admin push warning -->
+    <div id="adminWarningBanner" class="admin-warning-banner hidden" role="alert">
+      <span class="warn-badge">ADMIN WARNING</span>
+      <span id="adminWarningText">Please maintain full focus on the exam arena.</span>
+      <button id="dismissWarningBtn" class="warn-ack-btn" type="button">Acknowledge</button>
+    </div>
+ 
+    <header class="exam-header">
+      <div>
+        <div class="eyebrow-row">
+          <div class="eyebrow">Live exam</div>
+          <span class="security-pill"><span class="security-dot"></span> Secure session</span>
+        </div>
+        <h2 id="subjectBadge">HTML</h2>
+        <p id="questionNumber">Question 1</p>
       </div>
-    </article>
-
-    <!-- LIVE EXAM VIEW -->
-    <section id="liveExamView" class="live-exam-view" hidden>
-      <!-- 🔥 VVIP FEATURE 1: LIVE ADMIN PUSH WARNING ALERT -->
-      <div id="adminWarningBanner" class="admin-warning-banner hidden" role="alert">
-        <div class="warn-badge">⚠️ ADMIN OFFICIAL SECURITY ALERT</div>
-        <p id="adminWarningText">Warning from Admin Command Center: Please keep your full focus on the exam screen.</p>
-        <button id="dismissWarningBtn" class="warn-ack-btn" type="button">I Understand &amp; Acknowledge</button>
-      </div>
-
-      <div class="exam-header">
-        <div>
-          <div class="eyebrow-row">
-            <span class="eyebrow">Live Assessment Arena</span>
-            <span class="security-pill"><span class="security-dot"></span> Proctor Guard Active</span>
-          </div>
-          <h2>Stay Sharp. Build Clean.</h2>
-          <p>Navigate questions anytime. First selection locks the answer. Star questions to review later.</p>
+      <div class="stats-grid">
+        <div class="stat">
+          <span class="stat-label">Time left</span>
+          <strong id="timer" class="stat-value">30:00</strong>
         </div>
-        <div class="stats-grid">
-          <div class="stat"><span class="stat-label">Active Subject</span><strong id="subjectBadge" class="stat-value">HTML</strong></div>
-          <div class="stat"><span class="stat-label">Time Remaining</span><strong id="timer" class="stat-value">30:00</strong></div>
-          <div class="stat"><span class="stat-label">Progress</span><strong id="score" class="stat-value">0 / 60</strong></div>
+        <div class="stat">
+          <span class="stat-label">Answered</span>
+          <strong id="score" class="stat-value">0 / 60</strong>
         </div>
       </div>
-
-      <div class="progress-track"><div id="questionProgress" class="progress-fill"></div></div>
-
-      <article class="exam-card">
-        <div class="exam-card-topbar">
-          <div id="subjectTabs" class="subject-tabs" aria-label="Exam subjects"></div>
-          
-          <!-- 🔥 VVIP FEATURE 2: QUESTION BOOKMARK / FLAG FOR REVIEW -->
-          <button id="flagQuestionBtn" class="flag-btn" type="button" title="Flag or unflag this question to review before finishing">
-            <span class="flag-icon">⭐</span>
-            <span id="flagBtnText">Flag for Review</span>
-          </button>
-        </div>
-        
-        <!-- 🔥 VVIP FEATURE 3: QUESTION MATRIX FILTER TABS -->
-        <div class="question-navigation">
-          <div class="question-nav-header">
-            <span id="questionNumber" class="question-count">Question 1 of 60</span>
-            <div class="question-filter-pills">
-              <button id="filterAll" class="filter-pill active" type="button">All (<span id="countAll">60</span>)</button>
-              <button id="filterAnswered" class="filter-pill" type="button">Answered (<span id="countAnswered">0</span>)</button>
-              <button id="filterFlagged" class="filter-pill flagged-pill" type="button">⭐ Flagged (<span id="countFlagged">0</span>)</button>
-              <button id="filterUnattempted" class="filter-pill" type="button">Unattempted (<span id="countUnattempted">60</span>)</button>
-            </div>
-          </div>
-          <div id="questionMap" class="question-map" aria-label="Questions list"></div>
-        </div>
-
-        <h3 id="questionTitle" class="question-title"></h3>
-        <div id="options" class="options"></div>
-        <p id="answerFeedback" aria-live="polite"></p>
-
-        <div class="exam-footer">
-          <div class="footer-left">
-            <span>Answers lock upon selection. Navigate to other questions anytime.</span>
-            <!-- 🔥 VVIP FEATURE 4: ROUGH WORKSPACE SCRATCHPAD -->
-            <button id="toggleScratchpadBtn" class="scratchpad-toggle-btn" type="button">
-              📝 Rough Scratchpad
-            </button>
-          </div>
-          <div class="exam-controls">
-            <button id="previousQuestion" class="secondary-btn" type="button">Previous</button>
-            <button id="nextQuestion" class="secondary-btn" type="button">Next</button>
-            <button id="finishExamButton" class="primary-btn" type="button">Finish Exam</button>
+    </header>
+ 
+    <div class="progress-track" aria-hidden="true">
+      <div id="questionProgress" class="progress-fill"></div>
+    </div>
+ 
+    <article class="exam-card">
+      <div class="exam-card-topbar">
+        <div id="subjectTabs" class="subject-tabs"></div>
+        <button id="flagQuestionBtn" class="flag-btn" type="button">
+          <span aria-hidden="true">⚑</span>
+          <span id="flagBtnText">Flag for Review</span>
+        </button>
+      </div>
+ 
+      <!-- Question navigation matrix -->
+      <div class="question-navigation">
+        <div class="question-nav-header">
+          <span class="question-count">Questions</span>
+          <div class="question-filter-pills">
+            <button id="filterAll" class="filter-pill active" type="button">All (<span id="countAll">0</span>)</button>
+            <button id="filterAnswered" class="filter-pill" type="button">Answered (<span id="countAnswered">0</span>)</button>
+            <button id="filterFlagged" class="filter-pill" type="button">Flagged (<span id="countFlagged">0</span>)</button>
+            <button id="filterUnattempted" class="filter-pill" type="button">Unattempted (<span id="countUnattempted">0</span>)</button>
           </div>
         </div>
-      </article>
-
-      <!-- Scratchpad Drawer -->
-      <aside id="scratchpadDrawer" class="scratchpad-drawer hidden" aria-label="Rough scratchpad">
+        <div id="questionMap" class="question-map"></div>
+      </div>
+ 
+      <h3 id="questionTitle" class="question-title"></h3>
+      <div id="options" class="options"></div>
+      <p id="answerFeedback" role="status" aria-live="polite"></p>
+ 
+      <div class="exam-footer">
+        <div class="footer-left">
+          <button id="toggleScratchpadBtn" class="scratchpad-toggle-btn" type="button">📝 Scratchpad</button>
+          <span>Answers lock once selected.</span>
+        </div>
+        <div class="exam-controls">
+          <button id="previousQuestion" class="secondary-btn" type="button">← Previous</button>
+          <button id="nextQuestion" class="secondary-btn" type="button">Next →</button>
+          <button id="finishExamButton" class="primary-btn" type="button">Finish Exam</button>
+        </div>
+      </div>
+ 
+      <!-- Scratchpad drawer -->
+      <aside id="scratchpadDrawer" class="scratchpad-drawer hidden" aria-label="Scratchpad">
         <div class="scratchpad-header">
           <div class="scratchpad-title">
-            <span class="scratchpad-icon">📝</span>
+            <span aria-hidden="true">📝</span>
             <div>
-              <strong>Candidate Rough Workspace</strong>
-              <small>Auto-saves locally for this exam session</small>
+              <strong>Scratchpad</strong>
+              <small>Private rough notes (not submitted)</small>
             </div>
           </div>
-          <button id="closeScratchpadBtn" class="icon-close" type="button" aria-label="Close scratchpad">×</button>
+          <button id="closeScratchpadBtn" class="clear-notes-btn" type="button" aria-label="Close scratchpad">✕</button>
         </div>
-        <textarea id="scratchpadText" class="scratchpad-textarea" placeholder="Jot down formulas, code logic, or thoughts here..."></textarea>
+        <textarea id="scratchpadText" class="scratchpad-textarea" placeholder="Type your rough notes here..."></textarea>
         <div class="scratchpad-footer">
           <span id="scratchpadSavedNotice" class="scratchpad-saved-text">Saved</span>
-          <button id="clearScratchpadBtn" class="clear-notes-btn" type="button">Clear Notes</button>
+          <button id="clearScratchpadBtn" class="clear-notes-btn" type="button">Clear notes</button>
         </div>
       </aside>
-    </section>
-  </main>
-
-  <script src="Exam.js?v=17"></script>
+    </article>
+  </section>
+ 
+  <script src="Exam.js?v=22"></script>
 </body>
 </html>

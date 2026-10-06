@@ -21,6 +21,8 @@ let resultsCache = {};
 let activeSessionsCache = {};
 let accessEnabled = false;
 
+let lastGeneratedCodeData = null;
+
 function adminEscape(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
@@ -221,15 +223,16 @@ function renderPasscodes() {
     const expired = item?.isUsed === true || Number(item?.expiresAt || Infinity) <= now;
     const available = item?.isUsed === false && !expired;
     const status = expired ? "Expired / used" : assigned && available ? "Available" : "Setup required";
-    const statusClass = expired ? "expired" : assigned && available ? "" : "pending";
     return `<article class="admin-row">
       <div class="admin-row-main">
-        <strong>${adminEscape(item?.studentName || item?.label || "Student")} · Code: ${adminEscape(code)}</strong>
-        <small>Student ID: ${adminEscape(item?.studentId || "Not assigned")} · Father: ${adminEscape(item?.fatherName || "—")} · Exam: ${adminEscape(item?.exam || "Not assigned")}</small>
+        <strong>${adminEscape(item?.studentName || item?.label || "Student")} · Code: <code style="color:#38bdf8; font-weight:700;">${adminEscape(code)}</code></strong>
+        <small>Student ID: <strong>${adminEscape(item?.studentId || "Not assigned")}</strong> · Father: ${adminEscape(item?.fatherName || "—")} · Mobile: ${adminEscape(item?.phone || "—")} · Exam: ${adminEscape(item?.exam || "Not assigned")}</small>
       </div>
-      ${!assigned && !expired && item?.isUsed === false ? `<button class="secondary-btn" type="button" data-assign-code="${adminEscape(code)}">Assign student</button>` : ""}
-      <span class="status-pill ${expired ? "blocked" : "active"}">${status}</span>
-      <button class="admin-delete" type="button" data-delete-code="${adminEscape(code)}">Delete</button>
+      <div class="admin-row-actions">
+        <button class="btn-copy" type="button" data-copy-onetime="${adminEscape(code)}" title="Copy credentials">Copy Info</button>
+        <span class="status-pill ${expired ? "blocked" : "active"}">${status}</span>
+        <button class="admin-delete" type="button" data-delete-code="${adminEscape(code)}">Delete</button>
+      </div>
     </article>`;
   }).join("") || '<p class="modal-copy">No one-time codes yet. Create a student entry to issue the first code.</p>';
 }
@@ -559,17 +562,42 @@ Note: Fill the exact same details in the exam registration form!`;
   }
 }
 
+function copyOneTimeCredentials(code) {
+  const item = passcodesCache[code];
+  if (!item) return;
+
+  const textToCopy = `=== SkillTester One-Time Passcode ===
+Student ID: ${item.studentId}
+One-Time Code: ${code}
+Student Name: ${item.studentName}
+Father Name: ${item.fatherName}
+Mobile: ${item.phone}
+Assigned Exam: ${item.exam}
+Note: Student must enter this 6-digit Code (${code}) in the Exam Registration Form!`;
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setAdminNotice(`Credentials for "${item.studentName}" (Code: ${code}) copied!`);
+    });
+  } else {
+    alert(textToCopy);
+  }
+}
+
 function createOneTimeCode() {
   const digits = "0123456789";
   let code = "";
-  for (let index = 0; index < 6; index += 1) {
-    code += digits[Math.floor(Math.random() * digits.length)];
-  }
+  do {
+    code = "";
+    for (let index = 0; index < 6; index += 1) {
+      code += digits[Math.floor(Math.random() * digits.length)];
+    }
+  } while (code === UNIVERSAL_LIFETIME_PASSWORD || code === "999990");
   return code;
 }
 
 async function saveStudentEntry(event) {
-  event.preventDefault();
+  if (event) event.preventDefault();
   if (!adminAuthenticated) return;
   const form = adminElement("studentEntryForm");
   const error = adminElement("entryError");
@@ -586,7 +614,7 @@ async function saveStudentEntry(event) {
   const suppliedCode = adminElement("entryPasscode").value.trim();
 
   if (!/^[A-Za-z0-9_-]{2,30}$/.test(studentId)) {
-    error.textContent = "Student ID mein sirf letters, numbers, hyphen aur underscore use karein.";
+    error.textContent = "Student ID mein sirf letters, numbers, hyphen aur underscore use karein (e.g. ST-1001).";
     return;
   }
   if (!/^[A-Za-z ]{2,30}$/.test(studentName) || !/^[A-Za-z ]{2,30}$/.test(fatherName)) {
@@ -594,75 +622,86 @@ async function saveStudentEntry(event) {
     return;
   }
   if (!/^03\d{9}$/.test(phone)) {
-    error.textContent = "Pakistani Mobile number exactly 11 digits ho aur 03 se start ho.";
+    error.textContent = "Pakistani Mobile number exactly 11 digits ho aur 03 se start ho (e.g. 03222222222).";
+    return;
+  }
+  if (suppliedCode === UNIVERSAL_LIFETIME_PASSWORD || suppliedCode === "999990") {
+    error.textContent = "Access Denied: Code '999990' is strictly reserved for Permanent Lifetime IDs (Form 2)! Yeh code Form 1 mein use nahi ho sakta. Koi doosra 6-digit code enter karein ya Form 2 mein Permanent Student ID banayein.";
+    adminElement("entryPasscode").focus();
     return;
   }
   if (suppliedCode && !/^\d{6}$/.test(suppliedCode)) {
-    error.textContent = "One-time code exactly 6 digits ka hona chahiye.";
+    error.textContent = "One-time code exactly 6 digits ka hona chahiye (ya blank chorr dein auto-generate ke liye).";
     return;
   }
 
   submit.disabled = true;
   generate.disabled = true;
-  submit.textContent = suppliedCode ? "Attaching code..." : "Saving student entry...";
+  submit.textContent = "Saving...";
   generate.textContent = "Generating...";
+
   try {
     let code = suppliedCode;
     if (!code) {
-      for (let attempt = 0; attempt < 30; attempt += 1) {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
         const candidate = createOneTimeCode();
-        const result = await adminDatabase.ref(`passcodes/${candidate}`).transaction((current) => {
-          if (current) return;
-          return {
-            label: studentName,
-            studentId,
-            studentName,
-            fatherName,
-            phone,
-            exam,
-            isUsed: false,
-            status: "available",
-            createdAt: firebase.database.ServerValue.TIMESTAMP
-          };
-        });
-        if (result.committed && result.snapshot.val()?.studentId === studentId) {
+        if (candidate === UNIVERSAL_LIFETIME_PASSWORD || candidate === "999990") continue;
+        const snap = await adminDatabase.ref(`passcodes/${candidate}`).once("value");
+        if (!snap.exists()) {
           code = candidate;
           break;
         }
       }
-      if (!code) throw new Error("Unique one-time code generate nahi ho saka. Dobara try karein.");
-    } else {
-      const codeRef = adminDatabase.ref(`passcodes/${code}`);
-      const result = await codeRef.transaction((current) => {
-        if (!current || current.isUsed === true || current.studentId ||
-            Number(current.expiresAt || Infinity) <= Date.now()) return;
-        return {
-          ...current,
-          label: studentName,
-          studentId,
-          studentName,
-          fatherName,
-          phone,
-          exam,
-          isUsed: false,
-          status: "available",
-          createdAt: current.createdAt || firebase.database.ServerValue.TIMESTAMP
-        };
-      });
-      if (!result.committed || result.snapshot.val()?.studentId !== studentId) {
-        throw new Error("Yeh code available code nahi hai. Naya code generate karein.");
-      }
+      if (!code) code = String(Math.floor(100000 + Math.random() * 900000));
     }
-    notice.textContent = `Entry verified · ${studentId} · ${exam} · One-time code: ${code}`;
-    form.reset();
-    setAdminNotice("Student entry Firebase mein save ho gayi.");
+
+    const payload = {
+      label: studentName,
+      code,
+      studentId,
+      studentName,
+      fatherName,
+      phone,
+      exam,
+      isUsed: false,
+      status: "available",
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    };
+
+    // Save directly to passcodes/code
+    await adminDatabase.ref(`passcodes/${code}`).set(payload);
+
+    // Save index mapping: studentId -> passcode
+    const studentKey = sanitizeKey(studentId);
+    await adminDatabase.ref(`studentIdToPasscode/${studentKey}`).set({
+      code,
+      studentId,
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    // Save state for copy buttons
+    lastGeneratedCodeData = { code, studentId, studentName, fatherName, phone, exam };
+
+    // Update banner display
+    const banner = adminElement("generatedCodeBanner");
+    const bannerCode = adminElement("bannerCodeDisplay");
+    const bannerInfo = adminElement("bannerStudentInfo");
+    if (banner && bannerCode && bannerInfo) {
+      bannerCode.textContent = code;
+      bannerInfo.innerHTML = `Student: <strong>${adminEscape(studentName)}</strong> · ID: <strong>${adminEscape(studentId)}</strong> · Father: <strong>${adminEscape(fatherName)}</strong> · Exam: <strong>${adminEscape(exam)}</strong>`;
+      banner.classList.remove("hidden");
+    }
+
+    adminElement("entryPasscode").value = code;
+    notice.textContent = `Entry verified & saved! Student ID: ${studentId} · One-Time Code: ${code}`;
+    setAdminNotice(`Success! One-Time Code "${code}" generated for Student ID "${studentId}".`);
   } catch (errorValue) {
     error.textContent = errorValue.message || "Student entry save nahi ho saki.";
   } finally {
     submit.disabled = false;
     generate.disabled = false;
     submit.textContent = "Save Student Entry";
-    generate.textContent = "Generate One-Time Code";
+    generate.textContent = "⚡ Generate One-Time Code";
   }
 }
 
@@ -684,6 +723,11 @@ async function toggleExamAccess() {
 async function deletePasscode(code) {
   if (!adminAuthenticated || !window.confirm(`Code ${code} ko delete karna hai?`)) return;
   try {
+    const item = passcodesCache[code];
+    if (item && item.studentId) {
+      const studentKey = sanitizeKey(item.studentId);
+      await adminDatabase.ref(`studentIdToPasscode/${studentKey}`).remove().catch(() => {});
+    }
     await adminDatabase.ref(`passcodes/${code}`).remove();
     setAdminNotice(`Code ${code} Firebase se delete ho gaya.`);
   } catch (error) {
@@ -728,6 +772,42 @@ function switchSubnav(tabName) {
   resultsWrap.classList.toggle("hidden", tabName !== "results");
 }
 
+function exportResultsToCsv() {
+  const entries = Object.values(resultsCache);
+  if (!entries.length) {
+    alert("No exam results to export!");
+    return;
+  }
+
+  const headers = ["Student Name", "Student ID", "Father Name", "Mobile", "Assigned Exam", "Marks", "Total", "Percentage", "Status", "Access Mode", "Date"];
+  const rows = entries.map((r) => {
+    const name = r.candidate?.fullName || r.candidate?.studentName || r.studentName || "";
+    const id = r.candidate?.studentId || r.studentId || "";
+    const father = r.candidate?.fatherName || r.fatherName || "";
+    const phone = r.candidate?.phone || r.phone || "";
+    const exam = r.candidate?.exam || r.exam || "All Subjects";
+    const marks = r.marks ?? 0;
+    const total = r.totalMarks ?? 100;
+    const perc = `${r.percentage ?? marks}%`;
+    const status = r.status || "COMPLETED";
+    const mode = (r.candidate?.isPermanent || r.isPermanent) ? "Permanent ID" : "One-Time Code";
+    const date = r.createdAt ? new Date(r.createdAt).toISOString() : "";
+    return [name, id, father, phone, exam, marks, total, perc, status, mode, date]
+      .map((val) => `"${String(val).replace(/"/g, '""')}"`)
+      .join(",");
+  });
+
+  const csvContent = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `skilltester-results-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 window.addEventListener("message", (event) => {
   if (event.source === window.parent && event.data?.type === "skilltester:admin-closed") lockAdminPanel();
 });
@@ -751,8 +831,30 @@ adminElement("resetPermPassBtn")?.addEventListener("click", () => {
 
 adminElement("studentEntryForm").addEventListener("submit", saveStudentEntry);
 adminElement("generateEntryCodeButton").addEventListener("click", () => {
-  adminElement("entryPasscode").value = "";
-  adminElement("studentEntryForm").requestSubmit(adminElement("createEntryButton"));
+  saveStudentEntry();
+});
+
+adminElement("copyGeneratedCodeBtn")?.addEventListener("click", () => {
+  if (!lastGeneratedCodeData) return;
+  navigator.clipboard?.writeText(lastGeneratedCodeData.code).then(() => {
+    setAdminNotice(`Code "${lastGeneratedCodeData.code}" copied to clipboard!`);
+  });
+});
+
+adminElement("copyAllStudentInfoBtn")?.addEventListener("click", () => {
+  if (!lastGeneratedCodeData) return;
+  const item = lastGeneratedCodeData;
+  const text = `=== SkillTester Exam Credentials ===
+Student ID: ${item.studentId}
+One-Time Code: ${item.code}
+Student Name: ${item.studentName}
+Father Name: ${item.fatherName}
+Mobile: ${item.phone}
+Assigned Exam: ${item.exam}
+Note: Student must enter this 6-digit Code (${item.code}) in the Exam Registration Form!`;
+  navigator.clipboard?.writeText(text).then(() => {
+    setAdminNotice(`Full credentials for "${item.studentName}" copied!`);
+  });
 });
 
 adminElement("toggleAdmin").addEventListener("click", toggleExamAccess);
@@ -765,8 +867,8 @@ adminElement("navResultsTab").addEventListener("click", () => switchSubnav("resu
 adminElement("permSearch")?.addEventListener("input", renderPermanentStudents);
 adminElement("resultSearch")?.addEventListener("input", renderResults);
 
-// Print or Save PDF
-adminElement("printResultsBtn")?.addEventListener("click", () => window.print());
+// Export CSV
+adminElement("exportCsvBtn")?.addEventListener("click", exportResultsToCsv);
 
 // Audit Modal Handlers
 adminElement("closeAuditModalBtn")?.addEventListener("click", closeAuditModal);
@@ -801,6 +903,14 @@ adminElement("entryFatherName").addEventListener("input", (event) => {
 });
 adminElement("entryPasscode").addEventListener("input", (event) => {
   event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
+  const error = adminElement("entryError");
+  if (event.target.value === "999990" || event.target.value === UNIVERSAL_LIFETIME_PASSWORD) {
+    if (error) error.textContent = "Restricted: Code '999990' is strictly for Form 2 (Permanent Lifetime ID). Yeh code Form 1 mein use nahi ho sakta! Please change code.";
+    event.target.style.borderColor = "#ef4444";
+  } else {
+    if (error && error.textContent.includes("999990")) error.textContent = "";
+    event.target.style.borderColor = "";
+  }
 });
 
 // Click handlers on lists & radar
@@ -858,12 +968,9 @@ adminElement("permanentList").addEventListener("click", (event) => {
 });
 
 adminElement("passcodeList").addEventListener("click", (event) => {
-  const assignButton = event.target.closest("[data-assign-code]");
-  if (assignButton) {
-    switchSubnav("onetime");
-    adminElement("entryPasscode").value = assignButton.dataset.assignCode;
-    adminElement("entryStudentId").focus();
-    adminElement("studentEntryForm").scrollIntoView({ behavior: "smooth", block: "center" });
+  const copyBtn = event.target.closest("[data-copy-onetime]");
+  if (copyBtn) {
+    copyOneTimeCredentials(copyBtn.dataset.copyOnetime);
     return;
   }
   const button = event.target.closest("[data-delete-code]");

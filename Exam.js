@@ -106,7 +106,7 @@ function shuffle(items) {
 
 function startExam(exam) {
   if (state.examActive) return;
-  state.exam = exam;
+  state.exam = exam || "All Subjects";
   const questionBank = buildQuestionBank();
   const examSubjects = state.exam === "All Subjects"
     ? EXAM_SUBJECTS
@@ -130,6 +130,10 @@ function startExam(exam) {
   window.clearInterval(state.timerId);
   sessionStorage.setItem(SESSION_KEY, JSON.stringify({ startedAt: Date.now() }));
   document.body.classList.add("exam-running");
+  
+  const overviewCard = examElement("examOverviewCard");
+  if (overviewCard) overviewCard.hidden = true;
+  
   examElement("liveExamView").hidden = false;
   examElement("timer").classList.remove("timer-warning");
 
@@ -340,7 +344,8 @@ function renderQuestion() {
     button.classList.toggle("selected", isSelected);
     button.disabled = selectedAnswer !== null;
     button.setAttribute("aria-pressed", String(isSelected));
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
       if (!state.examActive || state.answers[state.questionIndex] !== null) return;
       state.answers[state.questionIndex] = optionIndex;
       renderQuestion();
@@ -426,10 +431,6 @@ examElement("dismissWarningBtn")?.addEventListener("click", () => {
 });
 
 examElement("beginExamButton")?.addEventListener("click", () => {
-  if (window.top === window) {
-    window.location.href = "index.html#examView";
-    return;
-  }
   window.parent.postMessage({ type: "skilltester:begin-exam" }, "*");
 });
 examElement("previousQuestion").addEventListener("click", () => goToQuestion(-1));
@@ -456,29 +457,56 @@ window.addEventListener("message", (event) => {
     const banner = examElement("adminWarningBanner");
     const text = examElement("adminWarningText");
     if (banner && text) {
-      text.textContent = `Warning from Admin Command Center: ${event.data.warning || "Please maintain full focus on the exam arena."}`;
+      text.textContent = event.data.warning || "Please maintain full focus on the exam arena.";
       banner.classList.remove("hidden");
+      banner.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }
 });
 
+// Keyboard protection: intercepts restricted shortcuts and reports to parent security system
 const blockKeyboard = (event) => {
   if (!state.examActive) return;
+
+  const key = event.key || "";
+  const isEscape = key === "Escape" || key === "Esc" || event.keyCode === 27;
+  const isPrintScreen = key === "PrintScreen" || event.keyCode === 44;
+  const isFKey = /^F\d+$/.test(key) || (event.keyCode >= 112 && event.keyCode <= 123);
+  const isAltCombo = event.altKey;
+  const isMetaKey = event.metaKey;
+  const isDangerousCtrl = event.ctrlKey && ["u", "s", "p", "r", "w", "i", "j"].includes(key.toLowerCase());
+
+  if (isEscape || isPrintScreen || isFKey || isAltCombo || isMetaKey || isDangerousCtrl) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    window.parent.postMessage({
+      type: "skilltester:shortcut-attempt",
+      key: isEscape ? "Escape (Esc)" : isPrintScreen ? "PrintScreen" : isFKey ? key : isAltCombo ? "Alt Shortcut" : isMetaKey ? "Windows Key" : `Ctrl+${key}`
+    }, "*");
+    return false;
+  }
+
+  // Allow normal typing inside scratchpad
+  if (event.target && (event.target.id === "scratchpadText" || event.target.tagName === "TEXTAREA")) {
+    return;
+  }
+
+  // All other keyboard typing outside scratchpad is locked
   event.preventDefault();
   event.stopPropagation();
-  event.stopImmediatePropagation();
   return false;
 };
 document.addEventListener("keydown", blockKeyboard, true);
 document.addEventListener("keypress", blockKeyboard, true);
 document.addEventListener("keyup", blockKeyboard, true);
 
+// Mouse protection: blocks right click, middle click, etc., but allows LEFT click (button === 0)
 const blockNonLeftClick = (event) => {
   if (!state.examActive) return;
   if (event.button !== 0) {
     event.preventDefault();
     event.stopPropagation();
-    event.stopImmediatePropagation();
     return false;
   }
 };
@@ -490,10 +518,4 @@ document.addEventListener("contextmenu", (event) => {
     event.preventDefault();
     event.stopPropagation();
   }
-}, true);
-document.addEventListener("selectstart", (event) => {
-  if (state.examActive) event.preventDefault();
-}, true);
-document.addEventListener("dragstart", (event) => {
-  if (state.examActive) event.preventDefault();
 }, true);

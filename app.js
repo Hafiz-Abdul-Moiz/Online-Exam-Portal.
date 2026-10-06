@@ -9,7 +9,7 @@ const firebaseConfig = {
   appId: "1:456949595332:web:79b40c4acc6499710f5d91"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
 const EXAM_TOTAL_MARKS = 100;
@@ -30,7 +30,9 @@ const state = {
   liveBlockListener: null,
   activeSessionId: null,
   activeSessionListener: null,
-  lastWarningSeen: 0
+  lastWarningSeen: 0,
+  shortcutAttempts: 0,
+  maxShortcutAttempts: 4
 };
 let audioContext = null;
 
@@ -118,58 +120,96 @@ function bindSecurityDefaults() {
     }
   }, true);
 
-  const blockKeyboard = (event) => {
-    if (!state.examActive) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    return false;
-  };
-  window.addEventListener("keydown", blockKeyboard, true);
-  window.addEventListener("keypress", blockKeyboard, true);
-  window.addEventListener("keyup", blockKeyboard, true);
-
+  // Left click is allowed (button === 0); block other mouse buttons when exam is active
   const blockNonLeftClick = (event) => {
     if (!state.examActive) return;
     if (event.button !== 0) {
       event.preventDefault();
       event.stopPropagation();
-      event.stopImmediatePropagation();
       return false;
     }
   };
   window.addEventListener("mousedown", blockNonLeftClick, true);
   window.addEventListener("mouseup", blockNonLeftClick, true);
   window.addEventListener("auxclick", blockNonLeftClick, true);
-  window.addEventListener("selectstart", (event) => {
-    if (state.examActive) event.preventDefault();
-  }, true);
-  window.addEventListener("dragstart", (event) => {
-    if (state.examActive) event.preventDefault();
-  }, true);
+}
+
+function recordShortcutAttempt(keyName) {
+  if (!state.examActive || state.finishing) return;
+  state.shortcutAttempts = (state.shortcutAttempts || 0) + 1;
+  const remaining = state.maxShortcutAttempts - state.shortcutAttempts;
+
+  if (state.shortcutAttempts >= state.maxShortcutAttempts) {
+    terminateActiveExam(`Exam Terminated: Multiple unauthorized keyboard shortcut attempts detected (${state.shortcutAttempts} attempts: Escape/Restricted keys).`);
+  } else {
+    const warningMsg = `⚠️ SECURITY WARNING (Attempt ${state.shortcutAttempts}/${state.maxShortcutAttempts}): Key '${keyName}' is BLOCKED! Keyboard shortcuts are locked. ${remaining} attempt(s) remaining before immediate EXAM TERMINATION!`;
+    playSound("wrong");
+    toast(warningMsg, "danger");
+    $("examCardFrame")?.contentWindow?.postMessage({
+      type: "skilltester:admin-warning",
+      warning: warningMsg
+    }, "*");
+  }
+}
+
+function handleRestrictedKey(event) {
+  if (!state.examActive || state.finishing) return;
+  const key = event.key || "";
+  const isEscape = key === "Escape" || key === "Esc" || event.keyCode === 27;
+  const isPrintScreen = key === "PrintScreen" || event.keyCode === 44;
+  const isFKey = /^F\d+$/.test(key) || (event.keyCode >= 112 && event.keyCode <= 123);
+  const isAltCombo = event.altKey;
+  const isMetaKey = event.metaKey;
+  const isDangerousCtrl = event.ctrlKey && ["u", "s", "p", "r", "w", "i", "j"].includes(key.toLowerCase());
+
+  if (isEscape || isPrintScreen || isFKey || isAltCombo || isMetaKey || isDangerousCtrl) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    recordShortcutAttempt(isEscape ? "Escape (Esc)" : isPrintScreen ? "PrintScreen" : isFKey ? key : isAltCombo ? "Alt Shortcut" : isMetaKey ? "Windows Key" : `Ctrl+${key}`);
+    return false;
+  }
 }
 
 function bindAntiCheat() {
   if (state.antiCheatBound) return;
   state.antiCheatBound = true;
 
-  window.addEventListener("blur", () => {
+  // 1. Fullscreen exit detection (clicking Chrome top X button or exiting Esc mode)
+  document.addEventListener("fullscreenchange", () => {
     if (state.examActive && !state.finishing) {
-      terminateActiveExam("Window focus lost or candidate switched away from exam.");
+      if (!document.fullscreenElement) {
+        terminateActiveExam("Exam Terminated: Fullscreen mode was exited via top (X) button or Escape.");
+      }
     }
   });
 
+  // 2. Genuine tab switch / minimization detection
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && state.examActive && !state.finishing) {
       terminateActiveExam("Tab switch or background mode detected.");
     }
   });
 
-  document.addEventListener("fullscreenchange", () => {
-    if (!document.fullscreenElement && state.examActive && !state.finishing) {
-      terminateActiveExam("Fullscreen mode was exited.");
-    }
+  // 3. Window blur: only terminate if user genuinely switched to another window/app
+  window.addEventListener("blur", () => {
+    if (!state.examActive || state.finishing) return;
+    window.setTimeout(() => {
+      if (!state.examActive || state.finishing) return;
+      const activeEl = document.activeElement;
+      const isExamIframe = activeEl && (activeEl.id === "examCardFrame" || activeEl.tagName === "IFRAME");
+      if (isExamIframe || !document.hidden) {
+        // Candidate is still inside the exam arena! Do NOT terminate!
+        return;
+      }
+      if (document.hidden) {
+        terminateActiveExam("Window focus lost or candidate switched away from exam.");
+      }
+    }, 300);
   });
+
+  // 4. Keyboard shortcut guard on parent window
+  window.addEventListener("keydown", handleRestrictedKey, true);
 }
 
 function requestExamFullscreen() {
@@ -220,36 +260,52 @@ function closeAdminPanel() {
 async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
   const adminSnapshot = await database.ref("adminCode").once("value");
   const adminData = adminSnapshot.val() || {};
-  if (adminData.isEnabled === false) throw new Error("Portal administrator ne exam access band kar di hai.");
+  if (adminData.isEnabled === false) {
+    throw new Error("Portal administrator ne exam access band kar di hai.");
+  }
 
-  const studentKey = sanitizeKey(studentId);
+  const normStudentId = String(studentId || "").trim().toUpperCase();
+  const studentKey = sanitizeKey(normStudentId);
+  const normFullName = String(fullName || "").trim().toLowerCase();
+  const normFatherName = String(fatherName || "").trim().toLowerCase();
+  const normPhone = String(phone || "").trim();
+  const rawCode = String(code || "").trim();
 
-  if (code === UNIVERSAL_LIFETIME_PASSWORD) {
+  // ==============================================================
+  // CASE A: Candidate entered the Lifetime Password "999990"
+  // STRICT RULE: Only students created in Form 2 (Permanent) can use 999990!
+  // ==============================================================
+  if (rawCode === UNIVERSAL_LIFETIME_PASSWORD) {
     const permSnap = await database.ref(`permanentStudents/${studentKey}`).once("value");
     const permData = permSnap.val();
 
     if (!permData) {
-      throw new Error(`Student ID "${studentId}" registered nahi hai! Pehle Admin panel se Form 2 mein Permanent ID create karein.`);
+      // Check if this student belongs to Form 1 (One-Time)
+      const oneTimeSnap = await database.ref(`studentIdToPasscode/${studentKey}`).once("value");
+      if (oneTimeSnap.exists()) {
+        throw new Error(`Student ID "${studentId}" One-Time Form (Form 1) mein bani hui hai! Yeh Permanent ID nahi hai. Kripya apna 6-digit One-Time Code enter karein, 999990 nahi.`);
+      }
+      throw new Error(`Student ID "${studentId}" Permanent list (Form 2) mein registered nahi hai! Pehle Admin Panel se Form 2 mein Permanent ID create karein.`);
     }
 
     if (permData.isBlocked === true) {
       throw new Error("Your ID is blocked from admin side");
     }
 
-    if (permData.studentName.trim().toLowerCase() !== fullName.trim().toLowerCase()) {
+    if (permData.studentName.trim().toLowerCase() !== normFullName) {
       throw new Error(`Student name match nahi hua! Registered name: "${permData.studentName}".`);
     }
-    if (permData.fatherName.trim().toLowerCase() !== fatherName.trim().toLowerCase()) {
+    if (permData.fatherName.trim().toLowerCase() !== normFatherName) {
       throw new Error(`Father name match nahi hua! Registered father: "${permData.fatherName}".`);
     }
-    if (permData.phone.trim() !== phone.trim()) {
-      throw new Error(`Mobile number match nahi hua! Registered: "${permData.phone}".`);
+    if (permData.phone.trim() !== normPhone) {
+      throw new Error(`Mobile number match nahi hua! Registered number: "${permData.phone}".`);
     }
 
     state.exam = permData.exam || "All Subjects";
     return {
       code: UNIVERSAL_LIFETIME_PASSWORD,
-      studentId: permData.studentId,
+      studentId: permData.studentId || normStudentId,
       studentName: permData.studentName,
       fullName: permData.studentName,
       fatherName: permData.fatherName,
@@ -260,48 +316,72 @@ async function verifyPasscode(code, studentId, fullName, fatherName, phone) {
     };
   }
 
-  const codeRef = database.ref(`passcodes/${code}`);
-  let matchedEntry = null;
-  const result = await codeRef.transaction((current) => {
-    if (!current) return;
-    if (current.isUsed === true) return;
-    if (Number(current.expiresAt || Infinity) <= Date.now()) return;
-
-    if (current.studentId && current.studentId.trim().toUpperCase() !== studentId.trim().toUpperCase()) return;
-    if (current.studentName && current.studentName.trim().toLowerCase() !== fullName.trim().toLowerCase()) return;
-    if (current.fatherName && current.fatherName.trim().toLowerCase() !== fatherName.trim().toLowerCase()) return;
-    if (current.phone && current.phone.trim() !== phone.trim()) return;
-
-    matchedEntry = {
-      code,
-      studentId: current.studentId || studentId,
-      studentName: current.studentName || fullName,
-      fullName: current.studentName || fullName,
-      fatherName: current.fatherName || fatherName,
-      phone: current.phone || phone,
-      exam: current.exam || "All Subjects",
-      isPermanent: false
-    };
-
-    return {
-      ...current,
-      studentId: matchedEntry.studentId,
-      studentName: matchedEntry.studentName,
-      fatherName: matchedEntry.fatherName,
-      phone: matchedEntry.phone,
-      exam: matchedEntry.exam,
-      isUsed: true,
-      usedAt: firebase.database.ServerValue.TIMESTAMP,
-      status: "used"
-    };
-  });
-
-  if (!result.committed || !matchedEntry) {
-    throw new Error("Yeh passcode galat hai, pehle use ho chuka hai, ya details match nahi kar rahi.");
+  // ==============================================================
+  // CASE B: Candidate entered a One-Time Code (Form 1)
+  // STRICT RULE: Must be a valid 6-digit code created in Form 1 for THIS student!
+  // ==============================================================
+  if (!rawCode || rawCode.length < 4) {
+    throw new Error("Kripya apna 6-digit One-Time Code ya Permanent Password (999990) enter karein.");
   }
 
-  state.exam = matchedEntry.exam;
-  return matchedEntry;
+  // 1. Direct lookup in passcodes
+  const codeSnap = await database.ref(`passcodes/${rawCode}`).once("value");
+  const codeData = codeSnap.val();
+
+  if (!codeData) {
+    // If student is actually a Permanent student who typed wrong code:
+    const permSnap = await database.ref(`permanentStudents/${studentKey}`).once("value");
+    if (permSnap.exists()) {
+      throw new Error(`Yeh Permanent Student ID hai! Is ke liye Lifetime Password enter karein: "${UNIVERSAL_LIFETIME_PASSWORD}".`);
+    }
+    throw new Error(`Passcode "${rawCode}" exist nahi karta! Sahi 6-digit One-Time Code enter karein.`);
+  }
+
+  // 2. Check if code has already been used
+  if (codeData.isUsed === true) {
+    throw new Error(`Yeh One-Time Code (${rawCode}) pehle use ho chuka hai! Ek code sirf ek dafa use ho sakta hai.`);
+  }
+
+  // 3. Check if expired by time
+  if (Number(codeData.expiresAt || Infinity) <= Date.now()) {
+    throw new Error("Yeh access code expire ho chuka hai.");
+  }
+
+  // 4. Verify that this specific code belongs to this student
+  if (codeData.studentId && codeData.studentId.trim().toUpperCase() !== normStudentId) {
+    throw new Error(`Yeh code Student ID "${normStudentId}" ka nahi hai! Yeh code Student ID "${codeData.studentId}" ko issue hua tha.`);
+  }
+
+  if (codeData.studentName && codeData.studentName.trim().toLowerCase() !== normFullName) {
+    throw new Error(`Student name match nahi hua! Registered name: "${codeData.studentName}".`);
+  }
+
+  if (codeData.fatherName && codeData.fatherName.trim().toLowerCase() !== normFatherName) {
+    throw new Error(`Father name match nahi hua! Registered father: "${codeData.fatherName}".`);
+  }
+
+  if (codeData.phone && codeData.phone.trim() !== normPhone) {
+    throw new Error(`Mobile number match nahi hua! Registered number: "${codeData.phone}".`);
+  }
+
+  // 5. Mark THIS one-time code as used in Firebase
+  await database.ref(`passcodes/${rawCode}`).update({
+    isUsed: true,
+    usedAt: firebase.database.ServerValue.TIMESTAMP,
+    status: "used"
+  });
+
+  state.exam = codeData.exam || "All Subjects";
+  return {
+    code: rawCode,
+    studentId: codeData.studentId || normStudentId,
+    studentName: codeData.studentName || fullName,
+    fullName: codeData.studentName || fullName,
+    fatherName: codeData.fatherName || fatherName,
+    phone: codeData.phone || phone,
+    exam: codeData.exam || "All Subjects",
+    isPermanent: false
+  };
 }
 
 async function submitRegistration(event) {
@@ -314,18 +394,32 @@ async function submitRegistration(event) {
   const error = $("registrationError");
   error.textContent = "";
 
-  if (!/^[A-Za-z0-9_-]{2,30}$/.test(studentId)) { error.textContent = "Student ID mein sirf letters, numbers, hyphen aur underscore use karein."; return; }
-  if (!/^[A-Za-z ]{2,30}$/.test(fullName) || !/^[A-Za-z ]{2,30}$/.test(fatherName)) { error.textContent = "Student aur father name mein sirf letters/spaces hon, maximum 30 characters."; return; }
-  if (!/^03\d{9}$/.test(phone)) { error.textContent = "Mobile number exactly 11 digits ho aur 03 se start ho."; return; }
-  if (code.length < 4) { error.textContent = "Enter 6-digit access code or lifetime password (999990)."; return; }
+  if (!/^[A-Za-z0-9_-]{2,30}$/.test(studentId)) {
+    error.textContent = "Student ID mein sirf letters, numbers, hyphen aur underscore use karein.";
+    return;
+  }
+  if (!/^[A-Za-z ]{2,30}$/.test(fullName) || !/^[A-Za-z ]{2,30}$/.test(fatherName)) {
+    error.textContent = "Student aur father name mein sirf letters/spaces hon, maximum 30 characters.";
+    return;
+  }
+  if (!/^03\d{9}$/.test(phone)) {
+    error.textContent = "Mobile number exactly 11 digits ho aur 03 se start ho.";
+    return;
+  }
+  if (code.length < 2) {
+    error.textContent = "6-digit access code ya lifetime password (999990) enter karein.";
+    return;
+  }
 
   $("registrationSubmit").disabled = true;
-  const fullscreenRequest = requestExamFullscreen();
+
   try {
-    await fullscreenRequest;
     const assignedEntry = await verifyPasscode(code, studentId, fullName, fatherName, phone);
     state.candidate = assignedEntry;
     closeRegistration();
+
+    // Enter Fullscreen officially ONLY when verification succeeds!
+    await requestExamFullscreen();
     await runLoadingSequence();
     hide("homeView"); hide("resultView"); hide("failureView"); show("examView");
 
@@ -372,10 +466,14 @@ async function submitRegistration(event) {
       exam: state.exam
     }, "*");
   } catch (verificationError) {
-    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
     $("loaderScreen").classList.remove("open");
     error.textContent = verificationError.message || "Passcode verification failed.";
-  } finally { $("registrationSubmit").disabled = false; }
+  } finally {
+    $("registrationSubmit").disabled = false;
+  }
 }
 
 function runLoadingSequence() {
@@ -387,17 +485,17 @@ function runLoadingSequence() {
   return new Promise((resolve) => {
     window.setTimeout(() => {
       $("loaderTitle").textContent = "Arming High-Security AI Proctor Guard...";
-      $("loaderText").textContent = "Locking keyboard, isolating display & syncing live telemetrics";
+      $("loaderText").textContent = "Locking display & syncing live telemetrics";
       $("loaderProgress").style.width = "100%";
       document.querySelectorAll(".loader-step")[0]?.classList.remove("active");
       document.querySelectorAll(".loader-step")[1]?.classList.add("active");
-    }, 1000);
+    }, 800);
     window.setTimeout(() => {
       document.querySelectorAll(".loader-step")[1]?.classList.remove("active");
       document.querySelectorAll(".loader-step")[2]?.classList.add("active");
       $("loaderScreen").classList.remove("open");
       resolve();
-    }, 2000);
+    }, 1600);
   });
 }
 
@@ -610,6 +708,7 @@ window.addEventListener("message", (event) => {
     }
     state.examActive = true;
     state.finishing = false;
+    state.shortcutAttempts = 0;
     state.score = 0;
     state.questionCount = Number.isInteger(message.questionCount) && message.questionCount > 0
       ? message.questionCount
@@ -617,7 +716,8 @@ window.addEventListener("message", (event) => {
     document.body.classList.add("exam-in-progress");
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ candidate: state.candidate, startedAt: Date.now() }));
     bindAntiCheat();
-    if (!document.fullscreenElement) terminateActiveExam("Fullscreen was exited before the exam started.");
+  } else if (message.type === "skilltester:shortcut-attempt" && state.examActive) {
+    recordShortcutAttempt(message.key);
   } else if (message.type === "skilltester:exam-progress" && state.examActive) {
     if (!Number.isInteger(message.correctAnswers) || !Number.isInteger(message.questionCount) ||
         message.questionCount < 1 || message.correctAnswers < 0 ||
@@ -647,5 +747,7 @@ document.querySelector('.main-nav a[href="#resultView"]').addEventListener("clic
 $("fullName").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30); });
 $("fatherName").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30); });
 $("candidatePhone").addEventListener("input", (event) => { event.target.value = event.target.value.replace(/\D/g, "").slice(0, 11); });
-$("accessCode").addEventListener("input", (event) => { event.target.value = event.target.value.slice(0, 20); });
+$("accessCode").addEventListener("input", (event) => { event.target.value = event.target.value.slice(0, 30); });
+
 bindSecurityDefaults();
+loadLiveResults();

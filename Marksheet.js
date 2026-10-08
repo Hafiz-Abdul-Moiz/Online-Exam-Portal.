@@ -110,11 +110,28 @@ function renderMarksheet(data) {
 
   let subjects = [];
   if (Object.keys(subjectBreakdown).length > 0) {
-    subjects = Object.entries(subjectBreakdown).map(([name, item]) => ({
-      name,
-      max: 25, // default proportional max
-      obtained: item.correct ? Math.round((item.correct / item.total) * 25) : Math.round(marks / 4)
-    }));
+    const keys = Object.keys(subjectBreakdown);
+    const count = keys.length;
+    let baseWeights = [];
+    if (count === 3) {
+      baseWeights = [35, 35, 30];
+    } else if (count === 4) {
+      baseWeights = [25, 25, 25, 25];
+    } else {
+      const avg = Math.floor(100 / count);
+      baseWeights = Array(count).fill(avg);
+      baseWeights[0] += 100 - (avg * count);
+    }
+    subjects = keys.map((name, i) => {
+      const item = subjectBreakdown[name] || {};
+      const subMax = baseWeights[i] || 25;
+      const subObt = Math.min(subMax, Math.round(((item.correct || 0) / (item.total || 1)) * subMax));
+      return {
+        name,
+        max: subMax,
+        obtained: subObt
+      };
+    });
   } else if (exam.toLowerCase().includes("computer") || exam.toLowerCase().includes("science")) {
     const p1 = Math.min(25, Math.round(marks * 0.28));
     const p2 = Math.min(25, Math.round(marks * 0.26));
@@ -127,14 +144,14 @@ function renderMarksheet(data) {
       { name: "Physics (Kinematics, Thermodynamics & Optics)", max: 25, obtained: p4 }
     ];
   } else {
-    // Web Dev subjects (HTML, CSS, JavaScript)
-    const h = Math.round(marks * 0.33);
-    const c = Math.round(marks * 0.33);
-    const j = marks - (h + c);
+    // Web Dev subjects (HTML5, CSS3, JavaScript ES6+)
+    const h = Math.round(marks * 0.35);
+    const c = Math.round(marks * 0.35);
+    const j = Math.max(0, marks - (h + c));
     subjects = [
-      { name: "HTML5 (Semantic Web & Forms)", max: 35, obtained: h },
-      { name: "CSS3 (Flexbox, Grid & Animations)", max: 35, obtained: c },
-      { name: "JavaScript ES6+ (DOM, Logic & Async)", max: 30, obtained: j }
+      { name: "HTML5 (Semantic Web, Forms & Canvas)", max: 35, obtained: Math.min(35, h) },
+      { name: "CSS3 (Flexbox, Grid, Animations & Media Queries)", max: 35, obtained: Math.min(35, c) },
+      { name: "JavaScript ES6+ (DOM, Logic, ES6 & Async)", max: 30, obtained: Math.min(30, j) }
     ];
   }
 

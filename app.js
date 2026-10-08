@@ -526,7 +526,7 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
     state.liveBlockListener = null;
   }
   document.body.classList.remove("exam-in-progress");
-  state.score = Number.isInteger(result.correctAnswers)
+  state.score = typeof result.correctAnswers === "number"
     ? Math.max(0, Math.min(result.correctAnswers, result.questionCount || 0))
     : state.score;
   state.questionCount = Number.isInteger(result.questionCount) && result.questionCount > 0
@@ -540,7 +540,13 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
   const finalMarks = calculateMarks(state.score);
 
-  const status = cheating ? "TERMINATED" : finalMarks < PASSING_SCORE ? "FAILED" : "PASSED";
+  const isWebDev = state.exam && (
+    state.exam.toLowerCase().includes("web") ||
+    state.exam.toLowerCase().includes("html") ||
+    state.exam === "All Subjects"
+  );
+  const passingScore = isWebDev ? 40 : PASSING_SCORE;
+  const status = cheating ? "TERMINATED" : finalMarks < passingScore ? "FAILED" : "PASSED";
 
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   const studentId = state.candidate?.studentId || "—";
@@ -560,7 +566,7 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
     if (disLink) disLink.href = `Marksheet.html?resultKey=${encodeURIComponent(savedKey)}&${immediateParams}`;
   });
 
-  if (cheating || finalMarks < PASSING_SCORE) {
+  if (cheating || finalMarks < passingScore) {
     playSound("failure");
     renderFailure(reason, cheating);
   } else {

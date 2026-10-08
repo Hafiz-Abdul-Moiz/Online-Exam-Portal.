@@ -141,33 +141,73 @@ function buildQuestionBank() {
     }
   ];
 
-  // 4. WEB DEVELOPMENT TRACK (HTML, CSS, JS - 20 MCQs each)
+  // 4. WEB DEVELOPMENT TRACK (20 HTML5 + 20 CSS3 + 20 JavaScript = 60 MCQs Total)
   const webDevQuestions = [
-    // HTML
-    { subject: "HTML", section: "Section A", difficulty: "Easy", question: "Sab se bari heading ke liye kaunsa element hota hai?", options: ["<h6>", "<heading>", "<h1>", "<head>"], answer: 2 },
-    { subject: "HTML", section: "Section A", difficulty: "Easy", question: "Image ke alternative text ke liye kaunsa attribute hota hai?", options: ["title", "alt", "src", "label"], answer: 1 },
-    { subject: "HTML", section: "Section A", difficulty: "Easy", question: "Hyperlink banane ke liye kaunsa element hota hai?", options: ["<link>", "<a>", "<href>", "<url>"], answer: 1 },
-    { subject: "HTML", section: "Section A", difficulty: "Medium", question: "Site navigation ke liye semantic element kaunsa hai?", options: ["<navigate>", "<menu>", "<nav>", "<links>"], answer: 2 },
-    { subject: "HTML", section: "Section A", difficulty: "Medium", question: "Email address ke liye behtareen input type kaunsa hai?", options: ["mail", "email", "text-email", "address"], answer: 1 },
-    { subject: "HTML", section: "Section A", difficulty: "Medium", question: "Video embed karne ke liye kaunsa element hota hai?", options: ["<media>", "<movie>", "<video>", "<play>"], answer: 2 },
-    { subject: "HTML", section: "Section A", difficulty: "Medium", question: "<!DOCTYPE html> kya declare karta hai?", options: ["CSS file", "HTML version aur mode", "JavaScript function", "Browser plugin"], answer: 1 },
-    { subject: "HTML", section: "Section A", difficulty: "Hard", question: "Table ki row ko represent karne wala element kaunsa hai?", options: ["<td>", "<th>", "<tr>", "<row>"], answer: 2 },
-    { subject: "HTML", section: "Section A", difficulty: "Hard", question: "Metadata kis tag ke andar hota hai?", options: ["<body>", "<meta>", "<head>", "<data>"], answer: 2 },
-    { subject: "HTML", section: "Section A", difficulty: "Hard", question: "Form control ko lazmi banane ke liye kaunsa attribute hota hai?", options: ["needed", "validate", "required", "must"], answer: 2 },
+    // --- HTML5 (20 MCQs: 16 Single Select + 4 Multi-Select) ---
+    { subject: "HTML5", section: "HTML5", difficulty: "Easy", question: "Which HTML5 element is used to define primary navigation links on a web page?", options: ["<navigate>", "<nav>", "<menu>", "<links>"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Easy", question: "Which attribute provides descriptive alternate text for an image when it cannot be loaded?", options: ["title", "alt", "src", "caption"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Easy", question: "What is the standard, modern HTML5 document type declaration?", options: ["<!DOCTYPE html>", "<!DOCTYPE HTML5>", "<!DOCTYPE html PUBLIC>", "<document type='html'>"], answer: 0 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Easy", question: "Which HTML5 input type automatically validates an email format prior to submission?", options: ["type='text'", "type='mail'", "type='email'", "type='check-email'"], answer: 2 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "[Multi-Select]: Which TWO of the following are valid HTML5 semantic block layout elements?", options: ["<article>", "<span>", "<section>", "<font>"], answers: [0, 2], isMultiSelect: true },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "Which HTML5 element is used to render 2D graphics and dynamic visual scripts via JavaScript?", options: ["<svg>", "<canvas>", "<graphic>", "<bitmap>"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "Which boolean attribute specifies that an input field must be filled out before submitting the form?", options: ["validate", "must", "required", "mandatory"], answer: 2 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "Which native HTML5 element embeds audio files without requiring external Flash plugins?", options: ["<sound>", "<audio>", "<music>", "<media>"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "In an HTML data table, which tag represents a standard data cell?", options: ["<tr>", "<th>", "<td>", "<cell>"], answer: 2 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "[Multi-Select]: Which TWO attributes are native to the HTML5 <video> element for media control?", options: ["controls", "autoplay", "stream", "run"], answers: [0, 1], isMultiSelect: true },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "Which element inside <head> specifies page metadata such as character encoding and viewport?", options: ["<data>", "<meta>", "<link>", "<header>"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Medium", question: "Which HTML5 element represents self-contained illustrative content, optionally paired with <figcaption>?", options: ["<figure>", "<picture>", "<aside>", "<section>"], answer: 0 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "What is the primary role of the <picture> element in responsive web development?", options: ["To draw vector diagrams", "To serve multiple source image resolutions based on media queries", "To apply CSS filter effects", "To compress PNG uploads"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "Which attribute supplies an accessible label for screen readers when visible text is missing?", options: ["tabindex", "aria-label", "role='hidden'", "alt-text"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "[Multi-Select]: Which TWO storage interfaces are part of the standard HTML5 Web Storage API?", options: ["localStorage", "sessionStorage", "cloudStorage", "indexedCookie"], answers: [0, 1], isMultiSelect: true },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "What security safeguard is enforced by applying the 'sandbox' attribute on an <iframe>?", options: ["Accelerates GPU acceleration", "Restricts scripts, form submission, and popups by default", "Enables cross-origin cookies", "Caches iframe content offline"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "Which HTML5 element holds inert client-side template markup that is not rendered until instantiated via script?", options: ["<script type='template'>", "<template>", "<slot>", "<hidden>"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "Which form input attribute checks the field value against a specified regular expression?", options: ["regex", "pattern", "validate", "match"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "Which attribute downloads an external script asynchronously and runs it immediately once available without pausing parser?", options: ["defer", "async", "preload", "nowait"], answer: 1 },
+    { subject: "HTML5", section: "HTML5", difficulty: "Hard", question: "[Multi-Select]: Which TWO tags are valid option grouping elements inside form dropdowns and datalists?", options: ["<option>", "<optgroup>", "<choice>", "<item>"], answers: [0, 1], isMultiSelect: true },
 
-    // CSS
-    { subject: "CSS", section: "Section A", difficulty: "Easy", question: "Text ka color change karne wali property kaunsi hai?", options: ["font-color", "color", "text-color", "foreground"], answer: 1 },
-    { subject: "CSS", section: "Section A", difficulty: "Easy", question: "Flex formatting context banane wala display mode kaunsa hai?", options: ["display: flex", "position: flex", "layout: flex", "flex: display"], answer: 0 },
-    { subject: "CSS", section: "Section A", difficulty: "Medium", question: "Root font size ke relative kaunsi unit hoti hai?", options: ["em", "rem", "%", "vh"], answer: 1 },
-    { subject: "CSS", section: "Section A", difficulty: "Medium", question: "Corners ko round karne wali property kaunsi hai?", options: ["corner-radius", "border-radius", "round", "radius"], answer: 1 },
-    { subject: "CSS", section: "Section A", difficulty: "Hard", question: "Grid columns control karne wali property kaunsi hai?", options: ["grid-template-columns", "grid-columns", "columns-grid", "template-columns"], answer: 0 },
+    // --- CSS3 (20 MCQs: 16 Single Select + 4 Multi-Select) ---
+    { subject: "CSS3", section: "CSS3", difficulty: "Easy", question: "Which CSS property changes the background color of an element?", options: ["color", "background-color", "surface", "bgcolor"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Easy", question: "Which unit in CSS is relative to the font-size of the root <html> element?", options: ["em", "rem", "px", "%"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Easy", question: "Which display value establishes a Flexbox formatting context for a container?", options: ["display: block", "display: flex", "display: grid", "display: inline"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Easy", question: "Which CSS property is used to round the outer borders of an element?", options: ["corner-radius", "border-radius", "border-curve", "edge-round"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "[Multi-Select]: Which TWO properties align Flexbox items along the Main Axis and Cross Axis respectively?", options: ["justify-content", "align-items", "text-align", "float"], answers: [0, 1], isMultiSelect: true },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "In the CSS Box Model, what is the interior clearance space between the content boundary and the border?", options: ["Margin", "Padding", "Outline", "Gap"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "What does setting 'box-sizing: border-box' achieve?", options: ["Excludes padding from dimensions", "Includes padding and border within the element's total declared width and height", "Applies a 3D drop-shadow", "Centers content automatically"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "Which CSS property specifies the 3D stacking order of positioned elements along the z-axis?", options: ["layer-index", "z-index", "stack-order", "elevation"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "Which CSS Grid property creates three equal-width flexible columns?", options: ["grid-columns: 3", "grid-template-columns: repeat(3, 1fr)", "columns: 3 1fr", "grid-layout: 3fr"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "[Multi-Select]: Which TWO position values remove an element completely from normal document layout flow?", options: ["absolute", "fixed", "relative", "static"], answers: [0, 1], isMultiSelect: true },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "Which CSS property enables smooth property value transitions over a specified duration?", options: ["animation", "transition", "transform", "motion"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Medium", question: "Which CSS pseudo-class targets an element when the user points their mouse cursor over it?", options: [":active", ":hover", ":focus", ":visited"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "What is the correct CSS selector specificity order from highest to lowest priority?", options: ["Inline style > ID > Class/Pseudo-class > Element", "ID > Inline style > Element > Class", "Element > Class > ID > Inline style", "Class > ID > Inline style > Element"], answer: 0 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "Which at-rule enables conditional styles for responsive web layouts based on viewport width?", options: ["@viewport", "@media", "@supports", "@responsive"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "[Multi-Select]: Which TWO pseudo-elements insert generated decorative content before and after an element?", options: ["::before", "::after", "::first-child", "::inside"], answers: [0, 1], isMultiSelect: true },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "Which CSS math function clamps an expression between an absolute minimum, preferred, and maximum value?", options: ["minmax()", "clamp()", "bound()", "calc()"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "Which CSS at-rule defines keyframe animation sequences and keyframe stages?", options: ["@animate", "@keyframes", "@frames", "@motion"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "How does 'opacity: 0' differ fundamentally from 'display: none'?", options: ["It removes the element from DOM layout", "The element remains in layout and still captures pointer events unless pointer-events: none is set", "It hides the element without rendering", "It deletes child nodes"], answer: 1 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "Which CSS property prevents the candidate from selecting text highlighting across a container?", options: ["user-select: none", "pointer-events: none", "cursor: default", "text-decoration: none"], answer: 0 },
+    { subject: "CSS3", section: "CSS3", difficulty: "Hard", question: "[Multi-Select]: Which TWO CSS transform functions allow 2D spatial modifications (rotation and translation)?", options: ["rotate()", "translate()", "colorize()", "filter()"], answers: [0, 1], isMultiSelect: true },
 
-    // JavaScript
-    { subject: "JavaScript", section: "Section A", difficulty: "Easy", question: "Block-scoped variable declare karne wala keyword kaunsa hai?", options: ["var", "let", "define", "value"], answer: 1 },
-    { subject: "JavaScript", section: "Section A", difficulty: "Easy", question: "Value aur type dono check karne wala operator kaunsa hai?", options: ["==", "=", "===", "equals"], answer: 2 },
-    { subject: "JavaScript", section: "Section A", difficulty: "Medium", question: "JSON text ko object mein convert karne wala method kaunsa hai?", options: ["JSON.parse", "JSON.stringify", "JSON.object", "parse.JSON"], answer: 0 },
-    { subject: "JavaScript", section: "Section A", difficulty: "Medium", question: "Array ke end mein item add karne wala method kaunsa hai?", options: ["push", "append", "addEnd", "insert"], answer: 0 },
-    { subject: "JavaScript", section: "Section A", difficulty: "Hard", question: "Closure kya hota hai?", options: ["CSS rule", "Aisa function jo apne lexical scope ko retain kare", "Closed tab", "Private HTML tag"], answer: 1 }
+    // --- JavaScript ES6+ (20 MCQs: 16 Single Select + 4 Multi-Select) ---
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Easy", question: "Which keyword declares a block-scoped reassignable variable in modern ES6?", options: ["var", "let", "const", "static"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Easy", question: "What is the return value of the expression 'typeof null' in standard JavaScript?", options: ["'null'", "'undefined'", "'object'", "'boolean'"], answer: 2 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Easy", question: "Which operator tests strict equality between values without automatic type conversion?", options: ["==", "===", "!=", "="], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Easy", question: "Which native JSON method parses a valid JSON string into a JavaScript object?", options: ["JSON.stringify()", "JSON.parse()", "JSON.toObject()", "JSON.decode()"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "[Multi-Select]: Which TWO Array methods do NOT mutate the original array and return a newly transformed array?", options: ["map()", "filter()", "push()", "splice()"], answers: [0, 1], isMultiSelect: true },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "What does the spread operator (...) do in an array literal such as [...arr1, ...arr2]?", options: ["Multiplies array elements", "Unpacks/expands iterable elements into individual items", "Converts the arrays into strings", "Sorts the arrays"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "What will '0.1 + 0.2 === 0.3' evaluate to in JavaScript due to IEEE 754 floating point arithmetic?", options: ["true", "false", "undefined", "NaN"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "Which ES6 function syntax provides concise syntax and lexically binds 'this' from surrounding scope?", options: ["Generator function", "Arrow function (() => {})", "Async function", "Constructor function"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "What is a Closure in JavaScript?", options: ["A fatal browser crash", "A function bundled together with references to its surrounding lexical environment", "A closed modal window", "A private class keyword"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "[Multi-Select]: Which TWO states are valid states of a JavaScript Promise lifecycle?", options: ["Pending (initial state)", "Fulfilled / Resolved", "Paused", "Archived"], answers: [0, 1], isMultiSelect: true },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "What is the primary benefit of ES8 async/await syntax over raw Promise .then() chains?", options: ["Executes code on multiple threads", "Allows writing asynchronous code in a clean, synchronous-looking style with try/catch", "Removes browser event loop", "Eliminates network latency"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Medium", question: "Which DOM method registers an event listener without removing previously attached handlers?", options: ["element.onclick = fn", "element.addEventListener('click', fn)", "element.attach('click', fn)", "element.listen('click', fn)"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "In the JavaScript Event Loop, which queue executes FIRST after the current synchronous script: Microtask queue or Macrotask queue?", options: ["Macrotask queue (setTimeout, setInterval)", "Microtask queue (Promise callbacks, queueMicrotask)", "Both execute simultaneously", "Determined randomly"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "How does variable hoisting operate for 'let' and 'const' declarations?", options: ["They are hoisted and initialized to undefined", "They are hoisted but reside in the Temporal Dead Zone (TDZ) until evaluation", "They are never hoisted at all", "They attach directly to window"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "[Multi-Select]: Which TWO primitive data types were introduced in modern ECMAScript standards (ES6+)?", options: ["Symbol", "BigInt", "Float", "Char"], answers: [0, 1], isMultiSelect: true },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "What does 'Object.freeze(obj)' accomplish on a target JavaScript object?", options: ["Prevents adding, removing, or modifying existing properties on the object (shallow freeze)", "Encrypts the object in memory", "Recursively deep freezes nested sub-objects", "Deletes undefined keys"], answer: 0 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "Which Object method returns an array of an object's own enumerable string-keyed [key, value] pairs?", options: ["Object.keys()", "Object.values()", "Object.entries()", "Object.pairs()"], answer: 2 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "What does the Optional Chaining operator (?.) do when a property reference is null or undefined?", options: ["Throws a TypeError immediately", "Short-circuits and safely returns undefined without throwing an exception", "Substitutes an empty string", "Logs a browser warning"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "Which method prevents an event from bubbling further up through ancestor DOM nodes?", options: ["event.preventDefault()", "event.stopPropagation()", "event.stopImmediate()", "event.cancel()"], answer: 1 },
+    { subject: "JavaScript", section: "JavaScript", difficulty: "Hard", question: "[Multi-Select]: Which TWO keywords are used in standard ES6 Modules for sharing and importing code?", options: ["import", "export", "require", "module.exports"], answers: [0, 1], isMultiSelect: true }
   ];
 
   return { sectionAMcqs, sectionBShorts, sectionCLongs, webDevQuestions };
@@ -314,15 +354,10 @@ function finishExam(reason, cheating = false) {
     if (subjQuestions.length > 0) {
       const correct = subjQuestions.reduce((acc, q) => {
         const ans = state.answers[q.originalIndex];
-        if (q.options) {
-          return acc + (ans === q.answer ? 1 : 0);
-        } else {
-          const isAttempted = ans && (typeof ans === "string" ? ans.trim().length >= 15 : (ans.text && ans.text.trim().length >= 15));
-          return acc + (isAttempted ? 1 : 0);
-        }
+        return acc + evaluateQuestionScore(q, ans);
       }, 0);
       subjectBreakdown[subj] = {
-        correct,
+        correct: Math.round(correct * 10) / 10,
         total: subjQuestions.length,
         percentage: Math.round((correct / subjQuestions.length) * 100)
       };
@@ -333,18 +368,34 @@ function finishExam(reason, cheating = false) {
     type: "skilltester:exam-finished",
     reason,
     cheating,
-    correctAnswers: calculateExamScore(),
+    correctAnswers: Math.round(calculateExamScore() * 10) / 10,
     questionCount: state.questions.length,
     subjectBreakdown,
     answerReview: state.questions.map((q, index) => {
       const ans = state.answers[index];
-      if (q.options) {
+      if (q.isMultiSelect) {
+        const selected = Array.isArray(ans) ? ans : (ans && Array.isArray(ans.selected) ? ans.selected : []);
+        const selectedStr = selected.length > 0
+          ? selected.map((i) => `${String.fromCharCode(65 + i)}. ${q.options[i]}`).join(" & ")
+          : "Not attempted";
+        const correctStr = (q.answers || []).map((i) => `${String.fromCharCode(65 + i)}. ${q.options[i]}`).join(" & ");
+        const qScore = evaluateQuestionScore(q, ans);
         return {
           subject: q.subject,
           question: q.question,
-          selectedAnswer: Number.isInteger(ans) ? `${String.fromCharCode(65 + ans)}. ${q.options[ans]}` : null,
+          selectedAnswer: selectedStr,
+          correctAnswer: correctStr,
+          isCorrect: qScore === 1.0,
+          partialCredit: qScore === 0.5
+        };
+      } else if (q.options) {
+        const chosen = typeof ans === "number" ? ans : (ans && typeof ans.selected === "number" ? ans.selected : null);
+        return {
+          subject: q.subject,
+          question: q.question,
+          selectedAnswer: Number.isInteger(chosen) ? `${String.fromCharCode(65 + chosen)}. ${q.options[chosen]}` : "Not attempted",
           correctAnswer: `${String.fromCharCode(65 + q.answer)}. ${q.options[q.answer]}`,
-          isCorrect: ans === q.answer
+          isCorrect: chosen === q.answer
         };
       } else {
         const textVal = typeof ans === "string" ? ans : (ans?.text || "Not attempted");
@@ -362,15 +413,44 @@ function finishExam(reason, cheating = false) {
   resetToOverview();
 }
 
+function evaluateQuestionScore(q, ans) {
+  if (!isAnswerProvided(ans)) return 0;
+
+  // Multi-Select Question
+  if (q.isMultiSelect && Array.isArray(q.answers)) {
+    const selected = Array.isArray(ans)
+      ? ans
+      : (ans && Array.isArray(ans.selected) ? ans.selected : []);
+    if (selected.length === 0) return 0;
+
+    // Rule: If an incorrect option is selected, assign 0 marks
+    const hasIncorrect = selected.some((idx) => !q.answers.includes(idx));
+    if (hasIncorrect) return 0;
+
+    // Count correct selections
+    const correctCount = selected.filter((idx) => q.answers.includes(idx)).length;
+    if (correctCount === q.answers.length) {
+      return 1.0; // 100% full weightage
+    } else if (correctCount > 0) {
+      return 0.5; // Partial credit (50% marks)
+    }
+    return 0;
+  }
+
+  // Single-Select MCQ
+  if (q.options) {
+    const chosen = typeof ans === "number" ? ans : (ans && typeof ans.selected === "number" ? ans.selected : null);
+    return chosen === q.answer ? 1.0 : 0;
+  }
+
+  // Subjective Question
+  const isAttempted = ans && (typeof ans === "string" ? ans.trim().length >= 15 : (ans.text && ans.text.trim().length >= 15));
+  return isAttempted ? 1.0 : 0;
+}
+
 function calculateExamScore() {
   return state.questions.reduce((total, q, index) => {
-    const ans = state.answers[index];
-    if (q.options) {
-      return total + (Number.isInteger(ans) && ans === q.answer ? 1 : 0);
-    } else {
-      const isAttempted = ans && (typeof ans === "string" ? ans.trim().length >= 15 : (ans.text && ans.text.trim().length >= 15));
-      return total + (isAttempted ? 1 : 0);
-    }
+    return total + evaluateQuestionScore(q, state.answers[index]);
   }, 0);
 }
 
@@ -378,22 +458,49 @@ function renderSubjectTabs() {
   const tabs = examElement("subjectTabs");
   tabs.replaceChildren();
 
-  // Allow switching by Sections or Subjects
-  const sections = [...new Set(state.questions.map((q) => q.section || "Section A"))];
-  sections.forEach((sec) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "subject-tab";
-    button.textContent = sec;
-    button.addEventListener("click", () => {
-      const firstQ = state.questions.findIndex((q) => (q.section || "Section A") === sec);
-      if (firstQ !== -1) {
-        state.questionIndex = firstQ;
-        renderQuestion();
+  const isWebDev = state.exam.toLowerCase().includes("web") || state.exam.toLowerCase().includes("all subjects") || state.questions.some((q) => q.subject === "HTML5");
+
+  if (isWebDev) {
+    const subjects = [...new Set(state.questions.map((q) => q.subject))];
+    subjects.forEach((subj) => {
+      const subjCount = state.questions.filter((q) => q.subject === subj).length;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "subject-tab";
+      button.textContent = `${subj} (${subjCount})`;
+      if (state.questions[state.questionIndex]?.subject === subj) {
+        button.classList.add("active");
       }
+      button.addEventListener("click", () => {
+        const firstQ = state.questions.findIndex((q) => q.subject === subj);
+        if (firstQ !== -1) {
+          state.questionIndex = firstQ;
+          renderQuestion();
+        }
+      });
+      tabs.appendChild(button);
     });
-    tabs.appendChild(button);
-  });
+  } else {
+    // Academic CS Group: Sections
+    const sections = [...new Set(state.questions.map((q) => q.section || "Section A"))];
+    sections.forEach((sec) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "subject-tab";
+      button.textContent = sec;
+      if ((state.questions[state.questionIndex]?.section || "Section A") === sec) {
+        button.classList.add("active");
+      }
+      button.addEventListener("click", () => {
+        const firstQ = state.questions.findIndex((q) => (q.section || "Section A") === sec);
+        if (firstQ !== -1) {
+          state.questionIndex = firstQ;
+          renderQuestion();
+        }
+      });
+      tabs.appendChild(button);
+    });
+  }
 }
 
 function updateQuestionCounts() {
@@ -467,8 +574,12 @@ function renderQuestionMap(currentSectionQuestions) {
 function isAnswerProvided(ans) {
   if (ans === null || ans === undefined) return false;
   if (typeof ans === "number") return true;
+  if (Array.isArray(ans)) return ans.length > 0;
   if (typeof ans === "string") return ans.trim().length > 0;
-  if (typeof ans === "object") return (ans.text || "").trim().length > 0;
+  if (typeof ans === "object") {
+    if (Array.isArray(ans.selected)) return ans.selected.length > 0;
+    return (ans.text || "").trim().length > 0;
+  }
   return false;
 }
 
@@ -506,17 +617,36 @@ function renderQuestion() {
     secQuota = `Attempted: ${secCAnswered} / 2 Long Questions (Attempt any 2 out of 4)`;
     if (sectionTitle) sectionTitle.innerHTML = `<span>📌</span> Section C: Detailed Comprehensive Questions (${secQuota})`;
     if (sectionChoice) sectionChoice.textContent = "2 Compulsory · 2 Choice Exempt";
+  } else if (current.subject === "HTML5" || currentSection === "HTML5") {
+    const htmlDone = state.questions.filter((q, i) => q.subject === "HTML5" && isAnswerProvided(state.answers[i])).length;
+    if (sectionTitle) sectionTitle.innerHTML = `<span>🌐</span> HTML5: Semantic Structure, Forms &amp; Canvas (${htmlDone} / 20 Answered)`;
+    if (sectionChoice) sectionChoice.textContent = "20 MCQs · 40/100 To Pass · Instant Locking";
+  } else if (current.subject === "CSS3" || currentSection === "CSS3") {
+    const cssDone = state.questions.filter((q, i) => q.subject === "CSS3" && isAnswerProvided(state.answers[i])).length;
+    if (sectionTitle) sectionTitle.innerHTML = `<span>🎨</span> CSS3: Flexbox, Grid, Animations &amp; Responsive Layout (${cssDone} / 20 Answered)`;
+    if (sectionChoice) sectionChoice.textContent = "20 MCQs · 40/100 To Pass · Instant Locking";
+  } else if (current.subject === "JavaScript" || currentSection === "JavaScript") {
+    const jsDone = state.questions.filter((q, i) => q.subject === "JavaScript" && isAnswerProvided(state.answers[i])).length;
+    if (sectionTitle) sectionTitle.innerHTML = `<span>⚡</span> JavaScript ES6+: Syntax, Asynchronous Logic &amp; DOM (${jsDone} / 20 Answered)`;
+    if (sectionChoice) sectionChoice.textContent = "20 MCQs · 40/100 To Pass · Instant Locking";
   } else {
     if (sectionTitle) sectionTitle.innerHTML = `<span>📌</span> Section A: Objective Multiple Choice Questions (20 MCQs)`;
     if (sectionChoice) sectionChoice.textContent = "All Compulsory";
   }
 
-  // Difficulty badge
+  // Difficulty badge & Multi-select indicator
   const diffClass = (current.difficulty || "medium").toLowerCase();
   const diffLabel = current.difficulty || "Medium";
   const questionTitle = examElement("questionTitle");
+  const multiBadge = current.isMultiSelect
+    ? `<span class="multiselect-badge">☑️ MULTI-SELECT (Select 2 Correct Options)</span>`
+    : "";
+
   questionTitle.innerHTML = `
-    <span class="difficulty-badge ${diffClass}">Difficulty: ${diffLabel}</span>
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+      <span class="difficulty-badge ${diffClass}">Difficulty: ${diffLabel}</span>
+      ${multiBadge}
+    </div>
     <div>${current.question.replace(/\n/g, "<br>")}</div>
   `;
 
@@ -529,7 +659,7 @@ function renderQuestion() {
   if (state.examActive) {
     window.parent.postMessage({
       type: "skilltester:exam-progress",
-      correctAnswers: calculateExamScore(),
+      correctAnswers: Math.round(calculateExamScore() * 10) / 10,
       questionCount: state.questions.length,
       currentQuestion: state.questionIndex + 1,
       secondsLeft: state.secondsLeft
@@ -539,7 +669,7 @@ function renderQuestion() {
   updateQuestionCounts();
   renderSubjectTabs();
   [...examElement("subjectTabs").children].forEach((button) => {
-    button.classList.toggle("active", button.textContent === currentSection);
+    button.classList.toggle("active", button.textContent.startsWith(current.subject) || button.textContent === currentSection);
   });
 
   renderQuestionMap(sectionQuestions);
@@ -553,25 +683,149 @@ function renderQuestion() {
 
   // CASE 1: OBJECTIVE MCQ
   if (current.options) {
-    const selectedAnswer = state.answers[state.questionIndex];
-    current.options.forEach((optionText, optionIndex) => {
-      const button = document.createElement("button");
-      button.className = "option";
-      button.type = "button";
-      button.textContent = `${String.fromCharCode(65 + optionIndex)}. ${optionText}`;
-      const isSelected = selectedAnswer === optionIndex;
-      button.classList.toggle("selected", isSelected);
-      button.disabled = selectedAnswer !== null;
-      button.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (!state.examActive || state.answers[state.questionIndex] !== null) return;
-        state.answers[state.questionIndex] = optionIndex;
-        renderQuestion();
+    if (current.isMultiSelect) {
+      // MULTI-SELECT MCQ (2 Correct Options)
+      const currentAns = state.answers[state.questionIndex];
+      const isLocked = currentAns && currentAns.locked === true;
+      const selected = (currentAns && Array.isArray(currentAns.selected))
+        ? currentAns.selected
+        : (Array.isArray(currentAns) ? currentAns : []);
+
+      current.options.forEach((optionText, optionIndex) => {
+        const button = document.createElement("button");
+        button.className = "option multiselect-option";
+        button.type = "button";
+        const isSelected = selected.includes(optionIndex);
+        button.classList.toggle("selected", isSelected);
+        button.classList.toggle("locked", isLocked);
+
+        const checkIndicator = document.createElement("span");
+        checkIndicator.className = "option-checkbox-indicator";
+        checkIndicator.textContent = isSelected ? "✓" : "";
+
+        const textSpan = document.createElement("span");
+        textSpan.innerHTML = `<strong>${String.fromCharCode(65 + optionIndex)}.</strong> ${optionText}`;
+
+        button.appendChild(checkIndicator);
+        button.appendChild(textSpan);
+
+        button.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!state.examActive) return;
+
+          if (isLocked) {
+            answerFeedback.textContent = "🔒 Selection is locked! In accordance with strict examination rules, locked options cannot be modified.";
+            return;
+          }
+
+          let newSelected = [...selected];
+          if (newSelected.includes(optionIndex)) {
+            newSelected = newSelected.filter((idx) => idx !== optionIndex);
+          } else {
+            if (newSelected.length >= 2) {
+              answerFeedback.textContent = "⚠️ This question requires exactly 2 options. Deselect one option first to choose another.";
+              return;
+            }
+            newSelected.push(optionIndex);
+          }
+
+          state.answers[state.questionIndex] = {
+            selected: newSelected,
+            locked: false
+          };
+          renderQuestion();
+        });
+
+        optionsContainer.appendChild(button);
       });
-      optionsContainer.appendChild(button);
-    });
-    if (selectedAnswer !== null) {
-      answerFeedback.textContent = "Answer locked. You can navigate freely or review other questions.";
+
+      // Multi-Select Lock Action Bar
+      const lockBar = document.createElement("div");
+      lockBar.className = "lock-multiselect-container";
+
+      if (!isLocked) {
+        const lockBtn = document.createElement("button");
+        lockBtn.type = "button";
+        lockBtn.className = "lock-multiselect-btn";
+        lockBtn.innerHTML = `🔒 Confirm &amp; Lock Selection (${selected.length} / 2 Selected)`;
+        lockBtn.disabled = selected.length === 0;
+
+        lockBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (selected.length === 0) {
+            answerFeedback.textContent = "⚠️ Please select at least 1 or 2 options before locking.";
+            return;
+          }
+          state.answers[state.questionIndex] = {
+            selected: [...selected],
+            locked: true
+          };
+          renderQuestion();
+        });
+
+        const helperNote = document.createElement("span");
+        helperNote.style.color = "#94a3b8";
+        helperNote.style.fontSize = "0.82rem";
+        helperNote.textContent = selected.length === 2
+          ? "✓ 2 options selected. Click Lock to finalize."
+          : `Select ${2 - selected.length} more option(s) or lock when ready.`;
+
+        lockBar.appendChild(lockBtn);
+        lockBar.appendChild(helperNote);
+        optionsContainer.appendChild(lockBar);
+
+        if (selected.length > 0) {
+          answerFeedback.textContent = `${selected.length} of 2 options selected. Remember to click 'Confirm & Lock Selection' when done.`;
+        }
+      } else {
+        const lockedNotice = document.createElement("div");
+        lockedNotice.style.display = "inline-flex";
+        lockedNotice.style.alignItems = "center";
+        lockedNotice.style.gap = "8px";
+        lockedNotice.style.color = "#38bdf8";
+        lockedNotice.style.fontSize = "0.85rem";
+        lockedNotice.style.fontWeight = "700";
+        lockedNotice.innerHTML = `🔒 Multi-select answer locked (${selected.length} option(s) recorded). Full credit requires both correct options.`;
+        lockBar.appendChild(lockedNotice);
+        optionsContainer.appendChild(lockBar);
+
+        answerFeedback.textContent = "Selection locked. AI Sentinel has recorded your submission.";
+      }
+
+    } else {
+      // SINGLE-SELECT MCQ WITH ONE-CLICK IMMEDIATE LOCKING
+      const selectedAnswer = state.answers[state.questionIndex];
+      const isLocked = Number.isInteger(selectedAnswer);
+
+      current.options.forEach((optionText, optionIndex) => {
+        const button = document.createElement("button");
+        button.className = "option";
+        button.type = "button";
+        button.textContent = `${String.fromCharCode(65 + optionIndex)}. ${optionText}`;
+        const isSelected = selectedAnswer === optionIndex;
+        button.classList.toggle("selected", isSelected);
+        button.classList.toggle("locked", isLocked);
+
+        button.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!state.examActive) return;
+
+          if (isLocked) {
+            answerFeedback.textContent = "🔒 Selection is locked! Changing answers or double-clicking is prevented by AI Proctor Sentinel.";
+            return;
+          }
+
+          // One-click lock immediately
+          state.answers[state.questionIndex] = optionIndex;
+          renderQuestion();
+        });
+
+        optionsContainer.appendChild(button);
+      });
+
+      if (isLocked) {
+        answerFeedback.textContent = "🔒 Answer locked immediately upon selection. Option is permanently recorded.";
+      }
     }
   } else {
     // CASE 2: SUBJECTIVE WRITTEN QUESTION (Short, Letter/Essay Choice, Sentences, Long)
@@ -581,6 +835,44 @@ function renderQuestion() {
 
     const subjectiveWrap = document.createElement("div");
     subjectiveWrap.className = "subjective-answer-area";
+
+    // Heading Helper Bar (VS Code style <h1> - <h4> tags)
+    const helperBar = document.createElement("div");
+    helperBar.className = "heading-helper-bar";
+    helperBar.innerHTML = `
+      <span class="heading-helper-label"><span>🏷️</span> HTML Headings (VS Code Style):</span>
+    `;
+
+    const tagList = ["h1", "h2", "h3", "h4"];
+    tagList.forEach((tag) => {
+      const tagBtn = document.createElement("button");
+      tagBtn.type = "button";
+      tagBtn.className = "heading-tag-btn";
+      tagBtn.textContent = `<${tag}>`;
+      tagBtn.title = `Insert <${tag}>...</${tag}> tag (Press Enter to render)`;
+      tagBtn.addEventListener("click", () => {
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+        const sel = val.substring(start, end) || `Heading ${tag.toUpperCase()}`;
+        const snippet = `<${tag}>${sel}</${tag}>\n`;
+        textarea.value = val.substring(0, start) + snippet + val.substring(end);
+        textarea.focus();
+        const cursor = start + snippet.length;
+        textarea.setSelectionRange(cursor, cursor);
+        textarea.dispatchEvent(new Event("input"));
+      });
+      helperBar.appendChild(tagBtn);
+    });
+
+    const helperTip = document.createElement("small");
+    helperTip.style.color = "#94a3b8";
+    helperTip.style.fontSize = "0.78rem";
+    helperTip.style.marginLeft = "auto";
+    helperTip.textContent = "💡 Type <h1>Title</h1> & hit Enter to preview";
+    helperBar.appendChild(helperTip);
+    subjectiveWrap.appendChild(helperBar);
 
     if (current.type === "choice_writing" && current.choices) {
       const switchRow = document.createElement("div");
@@ -601,8 +893,26 @@ function renderQuestion() {
 
     const textarea = document.createElement("textarea");
     textarea.className = "subjective-textarea";
-    textarea.placeholder = current.placeholder || "Type your comprehensive answer here...";
+    textarea.placeholder = current.placeholder || "Type your comprehensive answer here (e.g. <h1>Introduction</h1>)...";
     textarea.value = textValue;
+
+    // Live HTML Heading Preview Box
+    const previewPanel = document.createElement("div");
+    previewPanel.className = "heading-preview-panel";
+    previewPanel.innerHTML = `
+      <div class="heading-preview-header">
+        <span><strong>Live Output Preview:</strong> Headings &lt;h1&gt; to &lt;h4&gt; render below</span>
+        <span style="font-family:monospace; color:#38bdf8;">VS Code Engine</span>
+      </div>
+      <div class="heading-preview-content" id="headingPreviewContent"></div>
+    `;
+    const previewContent = previewPanel.querySelector("#headingPreviewContent");
+
+    const updateLivePreview = (text) => {
+      if (!previewContent) return;
+      previewContent.innerHTML = formatHeadingHtml(text);
+    };
+
     textarea.addEventListener("input", (e) => {
       const newText = e.target.value;
       if (current.type === "choice_writing") {
@@ -611,12 +921,45 @@ function renderQuestion() {
         state.answers[state.questionIndex] = newText;
       }
       updateQuestionCounts();
+      updateLivePreview(newText);
     });
 
+    // Handle Enter key for fast heading completion
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        setTimeout(() => updateLivePreview(textarea.value), 10);
+      }
+    });
+
+    updateLivePreview(textValue);
+
     subjectiveWrap.appendChild(textarea);
+    subjectiveWrap.appendChild(previewPanel);
     optionsContainer.appendChild(subjectiveWrap);
-    answerFeedback.textContent = "Your response is auto-saved as you type. You can return anytime to edit.";
+    answerFeedback.textContent = "Your response is auto-saved as you type. Headings <h1> through <h4> render live in the preview.";
   }
+}
+
+function formatHeadingHtml(rawText) {
+  if (!rawText || !rawText.trim()) {
+    return `<div class="heading-preview-empty">Type your answer above. Any &lt;h1&gt;, &lt;h2&gt;, &lt;h3&gt;, or &lt;h4&gt; tags will automatically render as real headings here upon typing or pressing Enter.</div>`;
+  }
+
+  // Escape HTML characters for safety
+  let safe = rawText
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Re-enable safe h1, h2, h3, h4 tags (case-insensitive)
+  safe = safe.replace(/&lt;h1&gt;(.*?)&lt;\/h1&gt;/gis, "<h1>$1</h1>");
+  safe = safe.replace(/&lt;h2&gt;(.*?)&lt;\/h2&gt;/gis, "<h2>$1</h2>");
+  safe = safe.replace(/&lt;h3&gt;(.*?)&lt;\/h3&gt;/gis, "<h3>$1</h3>");
+  safe = safe.replace(/&lt;h4&gt;(.*?)&lt;\/h4&gt;/gis, "<h4>$1</h4>");
+
+  // Convert line breaks
+  safe = safe.replace(/\n/g, "<br>");
+  return safe;
 }
 
 function goToQuestion(direction) {
@@ -744,7 +1087,7 @@ examElement("beginCsExamBtn")?.addEventListener("click", () => {
 });
 
 examElement("beginWebExamBtn")?.addEventListener("click", () => {
-  window.parent.postMessage({ type: "skilltester:begin-exam", exam: "All Subjects" }, "*");
+  window.parent.postMessage({ type: "skilltester:begin-exam", exam: "Web Development" }, "*");
 });
 
 examElement("previousQuestion").addEventListener("click", () => goToQuestion(-1));

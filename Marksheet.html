@@ -4,16 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Official VVIP Verified Marksheet & Certification Center">
-  <title>SkillTester Official Marksheet & Certificate of Excellence</title>
+  <title>Online Exam Portal Official Marksheet &amp; Certificate of Excellence</title>
   <link rel="stylesheet" href="Marksheet.css?v=2">
+  <link rel="stylesheet" href="Marksheet-vvip.css?v=1">
 </head>
 <body class="marksheet-body">
+  <canvas id="fxParticles" class="fx-canvas fx-particles" aria-hidden="true"></canvas>
+  <canvas id="fxConfetti" class="fx-canvas fx-confetti" aria-hidden="true"></canvas>
   <div class="marksheet-container">
     <!-- Top Action Toolbar -->
     <header class="marksheet-toolbar">
       <div class="toolbar-brand">
         <span>👑</span>
-        <span>SkillTester Examination &amp; Certification Authority</span>
+        <span>Online Exam Portal Examination &amp; Certification Authority</span>
       </div>
       <div class="toolbar-actions">
         <button id="backNavBtn" class="btn-tool" type="button" title="Back to Exam Portal in same tab">← Back to Portal / Arena</button>
@@ -31,11 +34,12 @@
 
     <!-- MAIN VVIP MARKSHEET / CERTIFICATE CARD -->
     <main id="marksheetCard" class="marksheet-card">
-      <div class="watermark-bg">SKILLTESTER 2026</div>
+      <div class="card-shine" aria-hidden="true"></div>
+      <div class="watermark-bg">ONLINE EXAM PORTAL 2026</div>
 
       <!-- Header with Board Stamp & QR -->
       <div class="marksheet-header">
-        <div class="board-logo">ST</div>
+        <div class="board-logo">OEP</div>
         <div class="board-titles">
           <p class="sup-title">Autonomous Board of Technical &amp; Scientific Examinations</p>
           <h1 id="docMainTitle">Official Provisional Marksheet</h1>
@@ -55,6 +59,9 @@
           <span class="qr-caption">QR Verified</span>
         </div>
       </div>
+
+      <!-- Topper / Position ribbon + animated verdict stamp (JS) -->
+      <div id="positionBanner" class="position-banner"></div>
 
       <!-- Mode Specific Banners (Injected dynamically for Failed / Terminated) -->
       <div id="statusSpecificBanner"></div>
@@ -143,6 +150,55 @@
         </div>
       </section>
 
+      <!-- Animated Performance Analytics (rings / bars) -->
+      <section id="visualAnalytics" class="visual-analytics hidden" aria-label="Performance analytics">
+        <h3 id="vaTitle" class="va-title">📊 Performance Analytics</h3>
+        <div id="vaBody"></div>
+      </section>
+
+      <!-- Strength / weakness insight -->
+      <section id="insightBox" class="insight-box hidden" aria-label="Performance insight"></section>
+
+      <!-- Honors / remarks written by admin -->
+      <p id="honorsLine" class="honors-line hidden"></p>
+
+      <!-- OFFICIAL AI FORENSIC EXAMINER AUDIT & VERIFICATION REPORT -->
+      <section id="marksheetAiAuditWrap" class="marksheet-ai-audit-wrap">
+        <div class="ai-audit-seal-header">
+          <div class="ai-stamp">🤖 AI AUDIT</div>
+          <div>
+            <h3 class="ai-audit-heading">Official AI Examiner Pedagogical Forensic Report</h3>
+            <p class="ai-audit-subheading">Autonomous artificial intelligence audit evaluating written application validity, essay structure, grammar precision, and spelling accuracy.</p>
+          </div>
+        </div>
+
+        <div class="ai-marksheet-metrics-grid">
+          <div class="metric-card">
+            <span class="m-label">Application Status</span>
+            <strong id="mAppVerdict" class="m-val approved">—</strong>
+          </div>
+          <div class="metric-card">
+            <span class="m-label">Essay / Composition</span>
+            <strong id="mEssayVerdict" class="m-val">—</strong>
+          </div>
+          <div class="metric-card">
+            <span class="m-label">Questions Attempted</span>
+            <strong id="mAttemptedVerdict" class="m-val">—</strong>
+          </div>
+          <div class="metric-card">
+            <span class="m-label">Spelling &amp; Typos</span>
+            <strong id="mSpellingVerdict" class="m-val">—</strong>
+          </div>
+        </div>
+
+        <div class="examiner-remarks-callout">
+          <strong>👨‍🏫 Senior Examiner Pedagogical Remarks:</strong>
+          <p id="mExaminerNotesText">Analyzing examination records...</p>
+        </div>
+
+        <div id="mDetailedAuditsContainer" class="detailed-audits-list"></div>
+      </section>
+
       <!-- Official Signatures & Seal -->
       <footer class="signatures-row">
         <div class="sig-box">
@@ -156,7 +212,7 @@
 
         <div class="official-seal-badge">
           <div class="seal-circle">
-            SkillTester<br>Official<br>Seal 2026
+            Online Exam<br>Portal Seal<br>2026
           </div>
           <small style="color:var(--text-muted); font-size:0.7rem; font-weight:700;">Government Accredited · ISO 9001</small>
         </div>
@@ -175,6 +231,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="Marksheet.js?v=2"></script>
+  <script src="Marksheet.js?v=3"></script>
 </body>
 </html>

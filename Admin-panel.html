@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="SkillTester secure exam administration panel.">
-  <title>SkillTester Admin Panel</title>
+  <meta name="description" content="Online Exam Portal secure exam administration panel.">
+  <title>Online Exam Portal Admin Panel</title>
   <link rel="stylesheet" href="style.css?v=23">
   <link rel="stylesheet" href="Admin-panel.css?v=23">
+    <link rel="stylesheet" href="Admin-vvip.css?v=1">
 </head>
 <body class="admin-page-body">
   <main class="admin-page">
@@ -35,7 +36,7 @@
           <span class="admin-brand-mark">&lt;/&gt;</span>
           <div>
             <p class="eyebrow">Live Proctored Administration</p>
-            <h1>SkillTester Command Center</h1>
+            <h1>Online Exam Portal Command Center</h1>
           </div>
         </div>
         <div class="admin-header-actions">
@@ -132,15 +133,14 @@
               <input id="permPhone" type="tel" inputmode="numeric" pattern="03[0-9]{9}" maxlength="11" placeholder="03xxxxxxxxx" required>
             </div>
             <div class="field">
-              <label for="permExam">Assigned Exam Group</label>
+              <label for="permExam">Assigned Exam Subject</label>
               <select id="permExam" required>
-                <option value="Computer Science Group">Computer Science Group (English, CS, Math, Physics)</option>
                 <option value="Web Development">Web Development Certification (HTML5 + CSS3 + JavaScript)</option>
-                <option value="All Subjects">Web Development (HTML + CSS + JavaScript)</option>
                 <option value="English">English (Special Paper - Grammar &amp; MCQs)</option>
                 <option value="Computer Science">Computer Science (Theory &amp; Programming)</option>
                 <option value="Mathematics">Mathematics (Science Group)</option>
                 <option value="Physics">Physics (Scientific Principles)</option>
+                <option value="Pakistan Studies">Pakistan Studies (History &amp; Ideology)</option>
               </select>
             </div>
             <div class="field">
@@ -148,6 +148,8 @@
               <select id="permDuration" required>
                 <option value="60">1 Hour (60 Minutes - Recommended)</option>
                 <option value="120">2 Hours (120 Minutes - Board Standard)</option>
+                <option value="150">2.5 Hours (150 Minutes)</option>
+                <option value="180">3 Hours (180 Minutes)</option>
                 <option value="30">30 Minutes (Sprint Assessment)</option>
               </select>
             </div>
@@ -200,15 +202,14 @@
             <div class="field"><label for="entryFatherName">Father name</label><input id="entryFatherName" type="text" maxlength="30" required></div>
             <div class="field"><label for="entryPhone">Mobile number</label><input id="entryPhone" type="tel" maxlength="11" required></div>
             <div class="field">
-              <label for="entryExam">Assigned Exam Group</label>
+              <label for="entryExam">Assigned Exam Subject</label>
               <select id="entryExam" required>
-                <option value="Computer Science Group">Computer Science Group (English, CS, Math, Physics)</option>
                 <option value="Web Development">Web Development Certification (HTML5 + CSS3 + JavaScript)</option>
-                <option value="All Subjects">Web Development (HTML + CSS + JavaScript)</option>
                 <option value="English">English (Special Paper)</option>
                 <option value="Computer Science">Computer Science (Theory)</option>
                 <option value="Mathematics">Mathematics</option>
                 <option value="Physics">Physics</option>
+                <option value="Pakistan Studies">Pakistan Studies</option>
               </select>
             </div>
             <div class="field">
@@ -216,6 +217,8 @@
               <select id="entryDuration" required>
                 <option value="60">1 Hour (60 Minutes)</option>
                 <option value="120">2 Hours (120 Minutes)</option>
+                <option value="150">2.5 Hours (150 Minutes)</option>
+                <option value="180">3 Hours (180 Minutes)</option>
                 <option value="30">30 Minutes</option>
               </select>
             </div>
@@ -309,17 +312,120 @@
           </div>
         </section>
 
-        <!-- Instant Custom Marksheet Generator for any candidate -->
+        <!-- 1. Dedicated Computer Science & Science Board Consolidated Marksheet Generator (400 Marks) -->
+        <section class="admin-section admin-issue-section" style="border: 2px solid rgba(245, 158, 11, 0.4); background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 27, 75, 0.85));">
+          <div class="admin-section-heading">
+            <div>
+              <p class="eyebrow" style="color:var(--gold-light);">Official Board Certification</p>
+              <h2>🏛️ Computer Science Board Marksheet Generator (400 Total Marks)</h2>
+            </div>
+            <span class="admin-section-icon" aria-hidden="true">👑</span>
+          </div>
+          <p class="admin-section-copy">
+            Is exam ke liye dedicated 5 subjects ke official totals pehle se set hain. Admin sirf student ki credentials aur subject marks darj kar ke official <strong>Consolidated Board Transcript</strong> generate kare:
+          </p>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:18px;">
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(245,158,11,0.25); border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">📖 English</div>
+              <div style="font-size:1rem; font-weight:800; color:#fde68a;">100 Marks</div>
+              <div style="font-size:0.7rem; color:#6ee7b7;">Pass: 50</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(129,140,248,0.25); border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">💻 Comp Science</div>
+              <div style="font-size:1rem; font-weight:800; color:#a5b4fc;">75 Marks</div>
+              <div style="font-size:0.7rem; color:#6ee7b7;">Pass: 25</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(56,189,248,0.25); border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">📐 Mathematics</div>
+              <div style="font-size:1rem; font-weight:800; color:#7dd3fc;">75 Marks</div>
+              <div style="font-size:0.7rem; color:#6ee7b7;">Pass: 25</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(251,146,60,0.25); border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">⚡ Physics</div>
+              <div style="font-size:1rem; font-weight:800; color:#fdba74;">75 Marks</div>
+              <div style="font-size:0.7rem; color:#6ee7b7;">Pass: 25</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(52,211,153,0.25); border-radius:8px; padding:10px; text-align:center;">
+              <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">🇵🇰 Pak Studies</div>
+              <div style="font-size:1rem; font-weight:800; color:#6ee7b7;">75 Marks</div>
+              <div style="font-size:0.7rem; color:#6ee7b7;">Pass: 25</div>
+            </div>
+          </div>
+
+          <form id="boardMarksheetForm" class="admin-entry-form">
+            <div class="field">
+              <label for="boardStudentId">Student ID</label>
+              <input id="boardStudentId" type="text" placeholder="e.g. ST-2026-CS" required>
+            </div>
+            <div class="field">
+              <label for="boardStudentName">Student Full Name</label>
+              <input id="boardStudentName" type="text" placeholder="e.g. Muhammad Ali" required>
+            </div>
+            <div class="field">
+              <label for="boardFatherName">Father Name</label>
+              <input id="boardFatherName" type="text" placeholder="e.g. Tariq Ahmed" required>
+            </div>
+            <div class="field">
+              <label for="boardPhone">Mobile Number</label>
+              <input id="boardPhone" type="tel" placeholder="03xxxxxxxxx" required>
+            </div>
+
+            <!-- 5 Individual Subject Marks -->
+            <div class="field">
+              <label for="boardMarksEng">English Marks (out of 100, Pass 50)</label>
+              <input id="boardMarksEng" type="number" min="0" max="100" value="82" required>
+            </div>
+            <div class="field">
+              <label for="boardMarksCs">Computer Science (out of 75, Pass 25)</label>
+              <input id="boardMarksCs" type="number" min="0" max="75" value="65" required>
+            </div>
+            <div class="field">
+              <label for="boardMarksMath">Mathematics (out of 75, Pass 25)</label>
+              <input id="boardMarksMath" type="number" min="0" max="75" value="68" required>
+            </div>
+            <div class="field">
+              <label for="boardMarksPhy">Physics (out of 75, Pass 25)</label>
+              <input id="boardMarksPhy" type="number" min="0" max="75" value="61" required>
+            </div>
+            <div class="field">
+              <label for="boardMarksPak">Pakistan Studies (out of 75, Pass 25)</label>
+              <input id="boardMarksPak" type="number" min="0" max="75" value="64" required>
+            </div>
+
+            <div class="field">
+              <label for="boardStatus">Official Result Verdict</label>
+              <select id="boardStatus" required>
+                <option value="PASSED">PASSED (Official Merit Certificate)</option>
+                <option value="FAILED">FAILED (Remedial Notice)</option>
+                <option value="TERMINATED">TERMINATED (Disciplinary Malpractice)</option>
+              </select>
+            </div>
+
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="boardReason">Remarks / Honors / Position (Optional)</label>
+              <input id="boardReason" type="text" placeholder="e.g. First Division with Distinction · Grade A+">
+            </div>
+
+            <div class="admin-entry-actions" style="grid-column: 1 / -1;">
+              <button class="btn-generate-marksheet" style="font-size:0.95rem; padding:14px 28px; width:100%;" type="submit">
+                🏛️ Generate &amp; Open Consolidated Board Transcript (400 Marks)
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- 2. Single-Subject Instant Marksheet Generator -->
         <section class="admin-section admin-issue-section">
           <div class="admin-section-heading">
             <div>
-              <p class="eyebrow">On-Demand Issue</p>
-              <h2>Instant Manual Marksheet Generator</h2>
+              <p class="eyebrow">Single-Subject Certificate</p>
+              <h2>Instant Single-Subject Marksheet Generator</h2>
             </div>
             <span class="admin-section-icon" aria-hidden="true">📜</span>
           </div>
           <p class="admin-section-copy">
-            Admin kisi bhi student ki ID ya name likh kar direct on-the-spot official animated certificate generate kar sakta hai:
+            Admin kisi bhi single paper ka direct on-the-spot certificate issue kar sakta hai (English 100, CS 75, Math 75, Physics 75, Pak Study 75, ya Web Dev 100):
           </p>
           <form id="instantMarksheetForm" class="admin-entry-form">
             <div class="field">
@@ -339,16 +445,18 @@
               <input id="instPhone" type="tel" placeholder="03xxxxxxxxx" required>
             </div>
             <div class="field">
-              <label for="instExam">Exam Group</label>
+              <label for="instExam">Exam Subject</label>
               <select id="instExam" required>
-                <option value="Computer Science &amp; Technical Science Board">Computer Science &amp; Technical Science Board</option>
-                <option value="Web Development (HTML+CSS+JS)">Web Development (HTML+CSS+JS)</option>
-                <option value="English Compulsory (Special Paper)">English Compulsory (Special Paper)</option>
-                <option value="Mathematics &amp; Physics Dual Paper">Mathematics &amp; Physics Dual Paper</option>
+                <option value="English">English Special Paper (Total: 100, Pass: 50)</option>
+                <option value="Computer Science">Computer Science (Total: 75, Pass: 25)</option>
+                <option value="Mathematics">Mathematics (Total: 75, Pass: 25)</option>
+                <option value="Physics">Physics (Total: 75, Pass: 25)</option>
+                <option value="Pakistan Studies">Pakistan Studies (Total: 75, Pass: 25)</option>
+                <option value="Web Development (HTML+CSS+JS)">Web Development (HTML+CSS+JS, Total: 100, Pass: 40)</option>
               </select>
             </div>
             <div class="field">
-              <label for="instMarks">Marks Obtained (out of 100)</label>
+              <label id="instMarksLabel" for="instMarks">Marks Obtained</label>
               <input id="instMarks" type="number" min="0" max="100" value="88" required>
             </div>
             <div class="field">
@@ -399,5 +507,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="Admin-panel.js?v=23"></script>
+    <script src="Admin-board.js?v=1"></script>
 </body>
 </html>

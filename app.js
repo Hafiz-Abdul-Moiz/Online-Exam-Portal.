@@ -14,6 +14,24 @@ const database = firebase.database();
 
 const EXAM_TOTAL_MARKS = 100;
 const PASSING_SCORE = 50;
+
+function getExamConfig(examName) {
+  const name = (examName || "").toLowerCase();
+  if (name.includes("english") && !name.includes("group")) {
+    return { totalMarks: 100, passingMarks: 50 };
+  }
+  if (name.includes("math") || name.includes("physic") || name.includes("pakistan") || name.includes("pak study") || (name.includes("computer science") && !name.includes("group"))) {
+    return { totalMarks: 75, passingMarks: 25 };
+  }
+  if (name.includes("computer science group") || name.includes("cs group") || (name.includes("science") && !name.includes("web") && !name.includes("html"))) {
+    return { totalMarks: 75, passingMarks: 25 };
+  }
+  if (name.includes("web") || name.includes("html") || name === "all subjects") {
+    return { totalMarks: 100, passingMarks: 40 };
+  }
+  return { totalMarks: 75, passingMarks: 25 };
+}
+
 const SESSION_KEY = "skilltester_session";
 const UNIVERSAL_LIFETIME_PASSWORD = "999990";
 localStorage.removeItem("skilltester_lockout");
@@ -33,7 +51,9 @@ const state = {
   activeSessionListener: null,
   lastWarningSeen: 0,
   shortcutAttempts: 0,
-  maxShortcutAttempts: 3,
+  maxShortcutAttempts: 6,
+  fullscreenStrikes: 0,
+  tabSwitchStrikes: 0,
   lastSavedResultKey: null
 };
 let audioContext = null;
@@ -70,9 +90,11 @@ function toast(message, tone = "info") {
   toast.timeout = window.setTimeout(() => node.classList.add("hidden"), 4500);
 }
 
-function calculateMarks(correctAnswers, questionCount = state.questionCount) {
+function calculateMarks(correctAnswers, questionCount = state.questionCount, totalMarks = null) {
+  const examCfg = getExamConfig(state.exam);
+  const targetTotal = totalMarks || examCfg.totalMarks;
   if (!Number.isInteger(questionCount) || questionCount < 1) return 0;
-  return Math.round((correctAnswers / questionCount) * EXAM_TOTAL_MARKS);
+  return Math.round((correctAnswers / questionCount) * targetTotal);
 }
 
 function renderAnswerReview(answerReview) {
@@ -155,15 +177,60 @@ function bindSecurityDefaults() {
   }, true);
 }
 
+let fullscreenExitTimer = null;
+let fullscreenCountdownSec = 10;
+
+function showFullscreenLockOverlay(strikes, remaining) {
+  const overlay = $("fullscreenLockOverlay");
+  const warnText = $("fullscreenLockWarning");
+  const countEl = $("fullscreenCountdownVal");
+  if (overlay) {
+    overlay.style.display = "flex";
+    if (warnText) {
+      const remText = remaining <= 0 
+        ? "FINAL WARNING! Next exit will permanently terminate the exam!" 
+        : `${remaining} warning(s) remaining before disqualification on 6th strike!`;
+      warnText.textContent = `🚨 Fullscreen Exited (Strike ${strikes}/5): ${remText}`;
+    }
+    clearInterval(fullscreenExitTimer);
+    fullscreenCountdownSec = 10;
+    if (countEl) countEl.textContent = String(fullscreenCountdownSec);
+    fullscreenExitTimer = setInterval(() => {
+      if (!state.examActive || state.finishing) {
+        clearInterval(fullscreenExitTimer);
+        return;
+      }
+      fullscreenCountdownSec--;
+      if (countEl) countEl.textContent = String(Math.max(0, fullscreenCountdownSec));
+      if (fullscreenCountdownSec <= 0) {
+        clearInterval(fullscreenExitTimer);
+        terminateActiveExam("AI Sentinel Disqualification: Fullscreen was not restored within 10 seconds. Unauthorized window exit.");
+      }
+    }, 1000);
+  }
+}
+
+function hideFullscreenLockOverlay() {
+  clearInterval(fullscreenExitTimer);
+  fullscreenExitTimer = null;
+  const overlay = $("fullscreenLockOverlay");
+  if (overlay) {
+    overlay.style.display = "none";
+  }
+}
+
 function recordShortcutAttempt(keyName) {
   if (!state.examActive || state.finishing) return;
   state.shortcutAttempts = (state.shortcutAttempts || 0) + 1;
-  const remaining = state.maxShortcutAttempts - state.shortcutAttempts;
+  const remaining = 5 - state.shortcutAttempts;
 
   if (state.shortcutAttempts >= state.maxShortcutAttempts) {
     terminateActiveExam(`Exam Terminated: Multiple unauthorized keyboard shortcut attempts detected (${state.shortcutAttempts} attempts: ${keyName}).`);
   } else {
-    const warningMsg = `⚠️ SECURITY WARNING (Attempt ${state.shortcutAttempts}/${state.maxShortcutAttempts}): Key '${keyName}' is BLOCKED! Keyboard shortcuts are locked. ${remaining} attempt(s) remaining before immediate EXAM TERMINATION!`;
+    const remainingText = remaining <= 0
+      ? "FINAL WARNING! 0 warnings remaining. Next attempt will immediately TERMINATE the exam!"
+      : `${remaining} warning(s) remaining before disqualification on 6th violation!`;
+    const warningMsg = `⚠️ SECURITY WARNING (Attempt ${state.shortcutAttempts}/5): Key '${keyName}' is BLOCKED! Keyboard shortcuts are locked. ${remainingText}`;
     playSound("wrong");
     toast(warningMsg, "danger");
     $("examCardFrame")?.contentWindow?.postMessage({
@@ -181,13 +248,15 @@ function handleRestrictedKey(event) {
   const isFKey = /^F\d+$/.test(key) || (event.keyCode >= 112 && event.keyCode <= 123);
   const isAltCombo = event.altKey;
   const isMetaKey = event.metaKey;
-  const isDangerousCtrl = event.ctrlKey && ["u", "s", "p", "r", "w", "i", "j", "c", "v"].includes(key.toLowerCase());
+  const isCtrlCombo = event.ctrlKey;
 
-  if (isEscape || isPrintScreen || isFKey || isAltCombo || isMetaKey || isDangerousCtrl) {
+  if (isEscape || isPrintScreen || isFKey || isAltCombo || isMetaKey || isCtrlCombo) {
     event.preventDefault();
     event.stopPropagation();
     if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-    recordShortcutAttempt(isEscape ? "Escape" : isPrintScreen ? "PrintScreen" : isFKey ? key : isAltCombo ? "Alt Shortcut" : isMetaKey ? "Windows Key" : `Ctrl+${key}`);
+    if (event.type === "keydown") {
+      recordShortcutAttempt(isEscape ? "Escape" : isPrintScreen ? "PrintScreen" : isFKey ? key : isAltCombo ? "Alt Shortcut" : isMetaKey ? "Windows Key" : `Ctrl+${key}`);
+    }
     return false;
   }
 }
@@ -196,41 +265,124 @@ function bindAntiCheat() {
   if (state.antiCheatBound) return;
   state.antiCheatBound = true;
 
+  $("resumeFullscreenBtn")?.addEventListener("click", () => {
+    requestExamFullscreen().catch(() => {});
+  });
+
   document.addEventListener("fullscreenchange", () => {
     if (state.examActive && !state.finishing) {
-      if (!document.fullscreenElement) {
-        terminateActiveExam("Exam Terminated: Fullscreen mode was exited.");
+      if (!document.fullscreenElement && !isMobileDevice()) {
+        state.fullscreenStrikes = (state.fullscreenStrikes || 0) + 1;
+        if (state.fullscreenStrikes >= 6) {
+          terminateActiveExam("AI Sentinel Disqualification: Fullscreen mode was exited repeatedly (5 strikes exceeded).");
+        } else {
+          const remaining = 5 - state.fullscreenStrikes;
+          playSound("wrong");
+          const warningMsg = `🚨 FULLSCREEN EXITED (Strike ${state.fullscreenStrikes}/5)! Fullscreen is mandatory. ${remaining <= 0 ? 'FINAL CHANCE!' : remaining + ' chance(s) left before exam termination!'}`;
+          toast(warningMsg, "danger");
+          showFullscreenLockOverlay(state.fullscreenStrikes, remaining);
+          $("examCardFrame")?.contentWindow?.postMessage({
+            type: "skilltester:admin-warning",
+            warning: warningMsg
+          }, "*");
+        }
+      } else if (document.fullscreenElement) {
+        hideFullscreenLockOverlay();
+        if (navigator.keyboard && typeof navigator.keyboard.lock === "function") {
+          navigator.keyboard.lock(["Escape"]).catch(() => {});
+        }
       }
     }
   });
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && state.examActive && !state.finishing) {
-      terminateActiveExam("AI Sentinel Disqualification: Tab switch or background mode detected.");
+      if (!document.fullscreenElement && !isMobileDevice()) {
+        terminateActiveExam("AI Sentinel Disqualification: Student navigated away from the exam tab while out of fullscreen mode.");
+        return;
+      }
+      state.tabSwitchStrikes = (state.tabSwitchStrikes || 0) + 1;
+      if (state.tabSwitchStrikes >= 6) {
+        terminateActiveExam("AI Sentinel Disqualification: Repeated tab switch or backgrounding detected (5 strikes exceeded).");
+      } else {
+        const remaining = 5 - state.tabSwitchStrikes;
+        playSound("wrong");
+        const warningMsg = `🚨 TAB SWITCH DETECTED (Strike ${state.tabSwitchStrikes}/5)! Do not leave exam window. ${remaining <= 0 ? 'FINAL CHANCE!' : remaining + ' chance(s) left before disqualification!'}`;
+        toast(warningMsg, "danger");
+        $("examCardFrame")?.contentWindow?.postMessage({
+          type: "skilltester:admin-warning",
+          warning: warningMsg
+        }, "*");
+      }
     }
   });
 
   window.addEventListener("blur", () => {
     if (!state.examActive || state.finishing) return;
+    if (!document.fullscreenElement && !isMobileDevice()) {
+      const activeEl = document.activeElement;
+      const isExamIframe = activeEl && (activeEl.id === "examCardFrame" || activeEl.tagName === "IFRAME");
+      if (!isExamIframe) {
+        window.setTimeout(() => {
+          if (!state.examActive || state.finishing || document.fullscreenElement) return;
+          const currentActive = document.activeElement;
+          const currentIsFrame = currentActive && (currentActive.id === "examCardFrame" || currentActive.tagName === "IFRAME");
+          if (!currentIsFrame) {
+            terminateActiveExam("AI Sentinel Disqualification: Focus lost to another application or tab while out of fullscreen.");
+          }
+        }, 500);
+        return;
+      }
+    }
     window.setTimeout(() => {
       if (!state.examActive || state.finishing) return;
       const activeEl = document.activeElement;
       const isExamIframe = activeEl && (activeEl.id === "examCardFrame" || activeEl.tagName === "IFRAME");
       if (isExamIframe || !document.hidden) return;
       if (document.hidden) {
-        terminateActiveExam("AI Sentinel Disqualification: Candidate switched away from exam window.");
+        state.tabSwitchStrikes = (state.tabSwitchStrikes || 0) + 1;
+        if (state.tabSwitchStrikes >= 6) {
+          terminateActiveExam("AI Sentinel Disqualification: Candidate switched away from exam window (5 strikes exceeded).");
+        } else {
+          const remaining = 5 - state.tabSwitchStrikes;
+          playSound("wrong");
+          toast(`🚨 WINDOW SWITCHED (Strike ${state.tabSwitchStrikes}/5)! ${remaining <= 0 ? 'FINAL CHANCE!' : remaining + ' strike(s) left before disqualification on 6th violation.'}`, "danger");
+        }
       }
-    }, 300);
+    }, 400);
+  });
+
+  let lastTopWarn = 0;
+  window.addEventListener("mousemove", (e) => {
+    if (state.examActive && !state.finishing && document.fullscreenElement) {
+      if (e.clientY <= 12 && Date.now() - lastTopWarn > 4000) {
+        lastTopWarn = Date.now();
+        toast("⚠️ Cursor top edge ke qareeb hai! Screen exit button ko click mat karein.", "danger");
+      }
+    }
   });
 
   window.addEventListener("keydown", handleRestrictedKey, true);
+  window.addEventListener("keyup", handleRestrictedKey, true);
+  window.addEventListener("keypress", handleRestrictedKey, true);
 }
 
-function requestExamFullscreen() {
-  if (document.fullscreenElement || isMobileDevice()) return Promise.resolve();
+async function requestExamFullscreen() {
+  if (isMobileDevice()) return Promise.resolve();
   const root = document.documentElement;
   const method = root.requestFullscreen || root.webkitRequestFullscreen || root.msRequestFullscreen;
-  return method ? method.call(root).catch(() => undefined) : Promise.resolve();
+  if (!method) return Promise.resolve();
+  try {
+    if (!document.fullscreenElement) {
+      await method.call(root);
+    }
+    hideFullscreenLockOverlay();
+    if (navigator.keyboard && typeof navigator.keyboard.lock === "function") {
+      await navigator.keyboard.lock(["Escape"]);
+    }
+  } catch (err) {
+    console.warn("Fullscreen request warning:", err);
+  }
 }
 
 function escapeHtml(value) {
@@ -474,7 +626,9 @@ async function submitRegistration(event) {
     $("examCardFrame").contentWindow.postMessage({
       type: "skilltester:start-exam",
       exam: state.exam,
-      durationMinutes: state.durationMinutes
+      durationMinutes: state.durationMinutes,
+      candidate: state.candidate,
+      studentId: state.candidate?.studentId || assignedEntry.studentId || ""
     }, "*");
   } catch (err) {
     if (document.fullscreenElement && document.exitFullscreen) {
@@ -535,17 +689,22 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
   state.answerReview = !cheating && Array.isArray(result.answerReview)
     ? result.answerReview.filter((item) => item && typeof item.subject === "string")
     : [];
+  state.lastAiEvaluation = result?.aiEvaluation || null;
   renderAnswerReview(state.answerReview);
   sessionStorage.removeItem(SESSION_KEY);
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => undefined);
-  const finalMarks = calculateMarks(state.score);
 
-  const isWebDev = state.exam && (
-    state.exam.toLowerCase().includes("web") ||
-    state.exam.toLowerCase().includes("html") ||
-    state.exam === "All Subjects"
-  );
-  const passingScore = isWebDev ? 40 : PASSING_SCORE;
+  const examCfg = getExamConfig(state.exam);
+  const examTotal = result.totalMarks || examCfg.totalMarks;
+  const passingScore = result.passingMarks || examCfg.passingMarks;
+  const finalMarks = typeof result.obtainedMarks === "number"
+    ? result.obtainedMarks
+    : (typeof result.correctAnswers === "number" ? result.correctAnswers : calculateMarks(state.score, state.questionCount, examTotal));
+
+  state.lastResultMarks = finalMarks;
+  state.lastResultTotalMarks = examTotal;
+  state.lastResultPassingMarks = passingScore;
+
   const status = cheating ? "TERMINATED" : finalMarks < passingScore ? "FAILED" : "PASSED";
 
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
@@ -554,7 +713,7 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
   const phone = state.candidate?.phone || "—";
   const exam = state.exam || "Computer Science Group";
 
-  const immediateParams = `studentId=${encodeURIComponent(studentId)}&name=${encodeURIComponent(actualName)}&father=${encodeURIComponent(fatherName)}&phone=${encodeURIComponent(phone)}&exam=${encodeURIComponent(exam)}&marks=${encodeURIComponent(finalMarks)}&status=${encodeURIComponent(status)}&reason=${encodeURIComponent(reason)}`;
+  const immediateParams = `studentId=${encodeURIComponent(studentId)}&name=${encodeURIComponent(actualName)}&father=${encodeURIComponent(fatherName)}&phone=${encodeURIComponent(phone)}&exam=${encodeURIComponent(exam)}&marks=${encodeURIComponent(finalMarks)}&totalMarks=${encodeURIComponent(examTotal)}&passingMarks=${encodeURIComponent(passingScore)}&status=${encodeURIComponent(status)}&reason=${encodeURIComponent(reason)}`;
   const vipLink = $("openVipMarksheetBtn");
   const disLink = $("viewDisciplinaryRecordBtn");
   if (vipLink) vipLink.href = `Marksheet.html?${immediateParams}`;
@@ -566,11 +725,15 @@ function finalizeExamResult(reason, cheating = false, result = {}) {
     if (disLink) disLink.href = `Marksheet.html?resultKey=${encodeURIComponent(savedKey)}&${immediateParams}`;
   });
 
-  if (cheating || finalMarks < passingScore) {
+  if (cheating) {
     playSound("failure");
-    renderFailure(reason, cheating);
+    renderFailure(reason, true);
   } else {
-    playSound("success");
+    if (finalMarks < passingScore) {
+      playSound("wrong");
+    } else {
+      playSound("success");
+    }
     renderResult();
   }
 }
@@ -585,6 +748,10 @@ function saveExamResult(finalMarks, status, reason, extra = {}, callback) {
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   const studentId = state.candidate?.studentId || "—";
   const isPermanent = state.candidate?.isPermanent === true;
+  const examCfg = getExamConfig(state.exam);
+  const examTotal = extra.totalMarks || examCfg.totalMarks;
+  const examPass = extra.passingMarks || examCfg.passingMarks;
+  const percentage = Math.round((finalMarks / examTotal) * 100);
 
   const resultPayload = {
     candidate: {
@@ -602,15 +769,17 @@ function saveExamResult(finalMarks, status, reason, extra = {}, callback) {
     phone: state.candidate?.phone || "—",
     exam: state.exam,
     marks: finalMarks,
-    totalMarks: EXAM_TOTAL_MARKS,
+    totalMarks: examTotal,
+    passingMarks: examPass,
     correctAnswers: state.score,
-    percentage: finalMarks,
+    percentage: percentage,
     status,
     reason,
     isPermanent: isPermanent,
     questionCount: state.questionCount,
     answerReview: state.answerReview || [],
     subjectBreakdown: extra.subjectBreakdown || {},
+    aiEvaluation: extra.aiEvaluation || state.lastAiEvaluation || null,
     createdAt: firebase.database.ServerValue.TIMESTAMP
   };
 
@@ -620,33 +789,253 @@ function saveExamResult(finalMarks, status, reason, extra = {}, callback) {
   }).catch(() => {});
 }
 
-function renderFailure(reason, cheating) {
+function renderFailure(reason, cheating = true) {
   hide("examView"); hide("homeView"); hide("resultView"); show("failureView");
   const failReasonEl = $("failureReason");
-  if (failReasonEl) failReasonEl.textContent = reason || "Exam session cancelled.";
+  const failTitleEl = $("failureTitle");
+  const failEyebrowEl = $("failureEyebrow");
+  const failIconEl = $("failureIcon");
+
+  if (cheating) {
+    if (failIconEl) failIconEl.textContent = "🚨";
+    if (failEyebrowEl) failEyebrowEl.textContent = "AI Sentinel Integrity Enforcement · DISQUALIFIED";
+    if (failTitleEl) failTitleEl.textContent = "EXAM DISQUALIFIED & TERMINATED";
+    if (failReasonEl) failReasonEl.textContent = reason || "Candidate disqualified due to prohibited shortcuts or unauthorized window exit.";
+  } else {
+    if (failIconEl) failIconEl.textContent = "⚠️";
+    if (failEyebrowEl) failEyebrowEl.textContent = "Official Assessment Result · Did Not Qualify";
+    if (failTitleEl) failTitleEl.textContent = "EXAM COMPLETED (FAILED)";
+    if (failReasonEl) failReasonEl.textContent = reason || "Candidate did not achieve passing score.";
+  }
+
   loadLiveResults();
   window.setTimeout(() => $("failureView").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 
 function renderResult() {
   hide("examView"); hide("homeView"); hide("failureView"); show("resultView");
-  $("scorecard").classList.remove("hidden");
-  $("scorecard").classList.remove("result-failed");
-  const finalMarks = calculateMarks(state.score);
-  const percentage = finalMarks;
+  const scorecard = $("scorecard");
+  scorecard.classList.remove("hidden");
+  
+  const examCfg = getExamConfig(state.exam);
+  const examTotal = state.lastResultTotalMarks || examCfg.totalMarks;
+  const passingScore = state.lastResultPassingMarks || examCfg.passingMarks;
+  const finalMarks = state.lastResultMarks !== undefined ? state.lastResultMarks : calculateMarks(state.score, state.questionCount, examTotal);
+  const percentage = Math.round((finalMarks / examTotal) * 100);
+  const isPassed = finalMarks >= passingScore;
 
   const actualName = state.candidate?.fullName || state.candidate?.studentName || "Student";
   $("resultName").textContent = actualName;
   $("resultFather").textContent = state.candidate?.fatherName || "—";
-  $("resultScore").textContent = `${finalMarks} / ${EXAM_TOTAL_MARKS}`;
+  $("resultScore").textContent = `${finalMarks} / ${examTotal}`;
   $("resultPercentage").textContent = `${percentage}%`;
-  $("resultRating").textContent = percentage >= 85 ? "Distinction" : percentage >= 70 ? "First Class" : "Qualified";
-  $("resultIcon").textContent = "✓";
-  $("resultEyebrow").textContent = "Assessment Passed";
-  $("resultHeading").textContent = "Congratulations, you passed!";
-  $("resultSubtitle").textContent = "Your official VVIP Animated Marksheet and Certificate is generated. Click below to view.";
+
+  const vipBtn = $("openVipMarksheetBtn");
+  const holdNotice = $("boardAdminHoldNotice");
+
+  if (isPassed) {
+    scorecard.classList.remove("result-failed");
+    $("resultIcon").textContent = "✓";
+    $("resultEyebrow").textContent = "Official Assessment Result · Passed";
+    $("resultHeading").textContent = "Congratulations, you passed!";
+    $("resultRating").textContent = percentage >= 85 ? "Distinction (A+)" : percentage >= 70 ? "First Class (A)" : "Passed (Qualified)";
+    $("resultRating").style.color = "#4ade80";
+    $("resultSubtitle").textContent = `Mubarak ho! You scored ${finalMarks} / ${examTotal} Marks (${percentage}%) and passed the ${state.exam} paper (Passing marks: ${passingScore}). Your verified scorecard and AI Examiner evaluation are available below.`;
+
+    if (vipBtn) {
+      vipBtn.style.display = "inline-flex";
+      vipBtn.textContent = "👑 View Official VVIP Animated Marksheet & Certificate";
+    }
+    if (holdNotice) holdNotice.classList.add("hidden");
+  } else {
+    scorecard.classList.add("result-failed");
+    $("resultIcon").textContent = "⚠️";
+    $("resultEyebrow").textContent = "Official Assessment Result · Did Not Qualify";
+    $("resultHeading").textContent = "Exam Completed: Result Failed";
+    $("resultRating").textContent = "Failed (Below Passing Marks)";
+    $("resultRating").style.color = "#f87171";
+    $("resultSubtitle").textContent = `You scored ${finalMarks} / ${examTotal} Marks (${percentage}%). Required passing marks for ${state.exam}: ${passingScore} Marks (33% minimum). Aap bilkul pareshan na hon, neeche apna diagnostic analysis check karein aur re-test ke liye tayaari karein.`;
+
+    if (vipBtn) vipBtn.style.display = "none";
+    if (holdNotice) holdNotice.classList.add("hidden");
+  }
+
+  // Render Exam Progress (MCQs / Short / Long) + AI Examiner Forensic Report
+  renderProgressSummary(state.lastAiEvaluation);
+  renderAiExaminerReport(state.lastAiEvaluation);
+
   loadLiveResults();
   window.setTimeout(() => $("resultView").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+}
+
+function renderProgressSummary(aiEval) {
+  const box = $("progressSummary");
+  const cards = $("progressCards");
+  const body = $("progressTableBody");
+  const note = $("progressNote");
+  if (!box || !cards || !body) return;
+
+  const audits = aiEval && Array.isArray(aiEval.questionAudits) ? aiEval.questionAudits : [];
+  if (audits.length === 0) {
+    box.classList.add("hidden");
+    return;
+  }
+
+  const isMcq = (item) => item.type === "mcq" || item.type === "multi_mcq";
+  const countBy = (list, status) => list.filter((item) => item.status === status).length;
+  const attemptedOf = (list) => list.length - countBy(list, "SKIPPED");
+
+  const mcqs = audits.filter(isMcq);
+  const written = audits.filter((item) => !isMcq(item));
+  const shorts = written.filter((item) => item.section === "Section B");
+  const longs = written.filter((item) => item.section === "Section C");
+
+  const tile = (label, value, tone) =>
+    `<div class="progress-card ${tone}"><span class="progress-card-label">${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+
+  let cardsHtml = "";
+  if (mcqs.length) {
+    cardsHtml += tile("MCQs Sahi", `${countBy(mcqs, "APPROVED")} / ${mcqs.length}`, "good");
+    cardsHtml += tile("MCQs Galat", `${countBy(mcqs, "REJECTED")}`, "bad");
+    if (countBy(mcqs, "PARTIAL") > 0) cardsHtml += tile("MCQs Partial", `${countBy(mcqs, "PARTIAL")}`, "warn");
+    cardsHtml += tile("MCQs Unattempted", `${countBy(mcqs, "SKIPPED")}`, "muted");
+  }
+  if (shorts.length) {
+    cardsHtml += tile("Short Questions Attempted", `${attemptedOf(shorts)} / ${shorts.length}`, "info");
+    cardsHtml += tile("Short Questions Sahi", `${countBy(shorts, "APPROVED")}`, "good");
+  }
+  if (longs.length) {
+    cardsHtml += tile("Long Questions Attempted", `${attemptedOf(longs)} / ${longs.length}`, "info");
+    cardsHtml += tile("Long Questions Sahi", `${countBy(longs, "APPROVED")}`, "good");
+  }
+  cards.innerHTML = cardsHtml;
+
+  // Group rows by paper part (Section A / B / C or HTML5 / CSS3 / JavaScript)
+  const order = [];
+  const groups = {};
+  audits.forEach((item) => {
+    const section = item.section || item.subject || "General";
+    const key = `${section}|${isMcq(item) ? "mcq" : "written"}`;
+    if (!groups[key]) {
+      groups[key] = { section, mcq: isMcq(item), list: [] };
+      order.push(key);
+    }
+    groups[key].list.push(item);
+  });
+
+  const labelFor = (group) => {
+    if (group.section === "Section A") return "Section A · MCQs";
+    if (group.section === "Section B") return "Section B · Short Questions";
+    if (group.section === "Section C") return "Section C · Long Questions";
+    return `${group.section} · ${group.mcq ? "MCQs" : "Written"}`;
+  };
+
+  body.innerHTML = order.map((key) => {
+    const group = groups[key];
+    const list = group.list;
+    return `<tr>
+      <td>${escapeHtml(labelFor(group))}</td>
+      <td>${list.length}</td>
+      <td>${attemptedOf(list)}</td>
+      <td class="pt-good">${countBy(list, "APPROVED")}</td>
+      <td class="pt-warn">${countBy(list, "PARTIAL")}</td>
+      <td class="pt-bad">${countBy(list, "REJECTED")}</td>
+      <td class="pt-muted">${countBy(list, "SKIPPED")}</td>
+    </tr>`;
+  }).join("");
+
+  if (note) {
+    if (written.length) {
+      note.textContent = "Note: Short aur Long answers AI Examiner ke criteria par check hote hain. Marks mein Section B ke best 5 aur Section C ke best 2 jawab count hote hain.";
+      note.classList.remove("hidden");
+    } else {
+      note.classList.add("hidden");
+    }
+  }
+
+  box.classList.remove("hidden");
+}
+
+function renderAiExaminerReport(aiEval) {
+  const section = $("aiExaminerAuditSection");
+  if (!section) return;
+
+  if (!aiEval) {
+    section.classList.add("hidden");
+    return;
+  }
+
+  section.classList.remove("hidden");
+
+  // Populate KPIs
+  const attemptedEl = $("aiKpiAttempted");
+  if (attemptedEl) {
+    attemptedEl.textContent = `${aiEval.attemptedCount} / ${aiEval.totalQuestions} (${Math.round((aiEval.attemptedCount / (aiEval.totalQuestions || 1)) * 100)}%)`;
+  }
+
+  const appStatusEl = $("aiKpiAppStatus");
+  if (appStatusEl) {
+    const appAudit = aiEval.applicationAudit;
+    if (appAudit && appAudit.status !== "NOT_APPLICABLE") {
+      appStatusEl.textContent = appAudit.status === "APPROVED" ? "✅ APPROVED" : appAudit.status === "PARTIAL" ? "⚠️ CONDITIONAL" : "❌ REJECTED";
+      appStatusEl.className = `ai-kpi-val ${appAudit.status === "APPROVED" ? "approved" : appAudit.status === "PARTIAL" ? "partial" : "rejected"}`;
+    } else {
+      appStatusEl.textContent = "N/A (MCQ Track)";
+      appStatusEl.className = "ai-kpi-val";
+    }
+  }
+
+  const essayRatingEl = $("aiKpiEssayRating");
+  if (essayRatingEl) {
+    const essayAudit = aiEval.essayAudit;
+    if (essayAudit && essayAudit.status !== "NOT_APPLICABLE") {
+      essayRatingEl.textContent = essayAudit.status === "APPROVED" ? `★ High Quality (${essayAudit.wordCount}w)` : essayAudit.status === "PARTIAL" ? `⚠️ Moderate (${essayAudit.wordCount}w)` : `❌ Underlength (${essayAudit.wordCount}w)`;
+      essayRatingEl.className = `ai-kpi-val ${essayAudit.status === "APPROVED" ? "approved" : "partial"}`;
+    } else {
+      essayRatingEl.textContent = "N/A (MCQ Track)";
+      essayRatingEl.className = "ai-kpi-val";
+    }
+  }
+
+  const spellingCountEl = $("aiKpiSpellingCount");
+  if (spellingCountEl) {
+    spellingCountEl.textContent = `${aiEval.totalSpellingMistakes || 0} Spotted`;
+    spellingCountEl.className = `ai-kpi-val ${aiEval.totalSpellingMistakes > 0 ? "partial" : "approved"}`;
+  }
+
+  const remarksText = $("aiExaminerRemarksText");
+  if (remarksText) {
+    remarksText.textContent = aiEval.teacherNotes || "Comprehensive evaluation complete.";
+  }
+
+  const diagList = $("aiDiagnosticsList");
+  if (diagList && Array.isArray(aiEval.questionAudits)) {
+    diagList.innerHTML = aiEval.questionAudits.map((item) => {
+      const isApproved = item.status === "APPROVED";
+      const isPartial = item.status === "PARTIAL";
+      const isSkipped = item.status === "SKIPPED";
+      const badgeCls = isApproved ? "approved" : isPartial ? "partial" : isSkipped ? "skipped" : "rejected";
+      const statusLabel = isApproved ? "✓ Approved" : isPartial ? "⚠️ Partial Credit" : isSkipped ? "⚪ Skipped" : "❌ Incorrect / Flawed";
+      
+      const spellingHtml = item.spellingMistakes && item.spellingMistakes.length > 0
+        ? `<div class="diag-spelling-warning"><strong>Spelling Errors Spotted:</strong> ${item.spellingMistakes.map(escapeHtml).join(", ")}</div>`
+        : "";
+
+      return `
+        <article class="ai-diag-card ${badgeCls}">
+          <div class="diag-header-row">
+            <span class="diag-qnum">Q${item.qIndex} [${escapeHtml(item.subject)} · ${escapeHtml(item.section || "Sec")}]</span>
+            <span class="diag-badge ${badgeCls}">${statusLabel}</span>
+          </div>
+          <p class="diag-qtext">${escapeHtml(item.question)}</p>
+          <div class="diag-ai-reasoning">
+            <strong>🤖 AI Examiner Diagnosis:</strong> ${escapeHtml(item.aiDiagnosis)}
+          </div>
+          ${spellingHtml}
+        </article>
+      `;
+    }).join("");
+  }
 }
 
 async function downloadScorecard() {
@@ -670,13 +1059,15 @@ async function loadLiveResults() {
     list.innerHTML = results.map((result) => {
       const studentName = result.candidate?.fullName || result.candidate?.studentName || result.studentName || "Student";
       const isPassed = result.status === "PASSED";
+      const itemExam = result.candidate?.exam || result.exam || "";
+      const itemTotal = result.totalMarks || (itemExam.toLowerCase().includes("english") ? 100 : (itemExam.toLowerCase().includes("web") ? 100 : 75));
       return `
         <div class="public-result-row">
           <span>
             <strong>${escapeHtml(studentName)}</strong>
             <small>${escapeHtml(result.candidate?.exam || result.exam || "CS Group")} · ${escapeHtml(result.status || "UNKNOWN")}</small>
           </span>
-          <strong class="public-result-score" style="color:${isPassed ? "#4ade80" : "#f87171"};">${escapeHtml(result.marks ?? "-")} / ${EXAM_TOTAL_MARKS}</strong>
+          <strong class="public-result-score" style="color:${isPassed ? "#4ade80" : "#f87171"};">${escapeHtml(result.marks ?? "-")} / ${itemTotal}</strong>
         </div>`;
     }).join("");
     status.textContent = results.length ? "Latest results live Firebase se update ho rahe hain." : "Abhi koi exam result available nahi hai.";
@@ -741,6 +1132,8 @@ window.addEventListener("message", (event) => {
     state.examActive = true;
     state.finishing = false;
     state.shortcutAttempts = 0;
+    state.fullscreenStrikes = 0;
+    state.tabSwitchStrikes = 0;
     state.score = 0;
     state.questionCount = Number.isInteger(message.questionCount) ? message.questionCount : 60;
     document.body.classList.add("exam-in-progress");
@@ -748,6 +1141,8 @@ window.addEventListener("message", (event) => {
     bindAntiCheat();
   } else if (message.type === "skilltester:shortcut-attempt" && state.examActive) {
     recordShortcutAttempt(message.key);
+  } else if (message.type === "skilltester:top-edge-warning" && state.examActive) {
+    toast("⚠️ Cursor top edge ke qareeb hai! Screen exit button ko click mat karein.", "danger");
   } else if (message.type === "skilltester:exam-progress" && state.examActive) {
     state.score = message.correctAnswers || 0;
     state.questionCount = message.questionCount || 60;

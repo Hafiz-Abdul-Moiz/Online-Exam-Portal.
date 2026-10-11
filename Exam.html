@@ -27,7 +27,7 @@
   <!-- EXAM ARENA OVERVIEW WITH BOTH EXAM CARDS -->
   <section id="examOverviewCard" class="exam-overview">
     <div style="text-align:center; margin-bottom:24px;">
-      <div class="eyebrow" style="margin-bottom:6px;">SkillTester Proctored Assessment 2026</div>
+      <div class="eyebrow" style="margin-bottom:6px;">Online Exam Portal Proctored Assessment 2026</div>
       <h1 style="font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight:800; color:#fff; letter-spacing:-0.02em;">
         Select Examination Track
       </h1>
@@ -50,28 +50,32 @@
           <div class="exam-subjects-list">
             <div class="exam-sub-item">
               <span>📖</span>
-              <div><strong>English</strong><small style="color:var(--muted); display:block;">Grammar &amp; 20 MCQs</small></div>
+              <div><strong>English</strong><small style="color:var(--muted); display:block;">Total: 100 · Pass: 50</small></div>
             </div>
             <div class="exam-sub-item">
               <span>💻</span>
-              <div><strong>Computer Science</strong><small style="color:var(--muted); display:block;">Theory &amp; Programming</small></div>
+              <div><strong>Computer Science</strong><small style="color:var(--muted); display:block;">Total: 75 · Pass: 25</small></div>
             </div>
             <div class="exam-sub-item">
               <span>📐</span>
-              <div><strong>Mathematics</strong><small style="color:var(--muted); display:block;">Matrices, Calculus</small></div>
+              <div><strong>Mathematics</strong><small style="color:var(--muted); display:block;">Total: 75 · Pass: 25</small></div>
             </div>
             <div class="exam-sub-item">
               <span>⚡</span>
-              <div><strong>Physics</strong><small style="color:var(--muted); display:block;">Mechanics, Optics</small></div>
+              <div><strong>Physics</strong><small style="color:var(--muted); display:block;">Total: 75 · Pass: 25</small></div>
+            </div>
+            <div class="exam-sub-item">
+              <span>🇵🇰</span>
+              <div><strong>Pakistan Studies</strong><small style="color:var(--muted); display:block;">Total: 75 · Pass: 25</small></div>
             </div>
           </div>
         </div>
 
         <div class="exam-card-footer">
           <div class="badge-row">
-            <span class="badge">1 Hour / 2 Hours</span>
-            <span class="badge">60 Questions</span>
-            <span class="badge" style="color:#a5b4fc; border-color:rgba(129,140,248,0.4);">Section A, B, C</span>
+            <span class="badge">1 - 2 Hours</span>
+            <span class="badge">20 MCQs · 1 Mark Each</span>
+            <span class="badge" style="color:#a5b4fc; border-color:rgba(129,140,248,0.4);">Short (5/8) · Long (2/4)</span>
           </div>
           <button id="beginCsExamBtn" class="primary-btn" type="button" style="background:#818cf8; color:#0b0f19;">
             SELECT &amp; START CS EXAM →
@@ -158,6 +162,7 @@
       <div>
         <div class="eyebrow-row">
           <div class="eyebrow" id="examGroupHeaderBadge">Live Exam</div>
+          <span id="examSubjectMarksSummary" class="exam-subject-marks-summary">Total: 75 Marks · Pass: 25 Marks</span>
           <span class="security-pill"><span class="security-dot"></span> AI Sentinel Guarding</span>
         </div>
         <h2 id="subjectBadge">Loading Subject...</h2>
@@ -269,6 +274,45 @@
           <button class="btn-ai-prompt" type="button" data-prompt="rules">📋 Exam Rules</button>
           <button class="btn-ai-prompt" type="button" data-prompt="passing">🎯 Passing Score</button>
           <button class="btn-ai-prompt" type="button" data-prompt="help">💡 Section Guide</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IN-PAGE FINISH EXAM CONFIRMATION MODAL (Safe submission - no browser alerts) -->
+    <div id="finishConfirmModal" class="finish-confirm-modal hidden" role="dialog" aria-modal="true">
+      <div class="finish-modal-backdrop" id="finishModalBackdrop"></div>
+      <div class="finish-modal-box">
+        <div class="finish-modal-header">
+          <span class="finish-modal-icon">🏁</span>
+          <h3>Finish &amp; Submit Examination</h3>
+        </div>
+        <p class="finish-modal-desc">
+          Are you ready to finalize and submit your examination? Your answers will be verified by the <strong>Autonomous AI Academic Examiner</strong> and recorded officially.
+        </p>
+        <div class="finish-modal-stats">
+          <div class="f-stat-card">
+            <span class="f-stat-label">Total Questions</span>
+            <strong id="fModalTotalQ">32</strong>
+          </div>
+          <div class="f-stat-card">
+            <span class="f-stat-label">Attempted</span>
+            <strong id="fModalAttempted" style="color:#4ade80;">0</strong>
+          </div>
+          <div class="f-stat-card">
+            <span class="f-stat-label">Unattempted</span>
+            <strong id="fModalUnattempted" style="color:#f87171;">0</strong>
+          </div>
+          <div class="f-stat-card">
+            <span class="f-stat-label">Subject Marks</span>
+            <strong id="fModalSubjectMarks" style="color:#fbbf24;">75 (Pass: 25)</strong>
+          </div>
+        </div>
+        <div id="fModalWarningBox" class="f-modal-warning-box hidden">
+          ⚠️ <strong>Notice:</strong> You still have <span id="fModalUnattemptedCount">0</span> unattempted question(s). You can return to answer them before final submission.
+        </div>
+        <div class="finish-modal-actions">
+          <button id="cancelFinishBtn" class="secondary-btn" type="button">← Return to Exam</button>
+          <button id="confirmFinishBtn" class="primary-btn" type="button" style="background:#22c55e;">✓ Yes, Submit &amp; Finish Exam</button>
         </div>
       </div>
     </div>

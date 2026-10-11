@@ -1,17 +1,125 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 900" width="100%" height="100%">
   <!-- Official Verified Hand Signature: Hafiz Abdul Moiz -->
-  <g fill="none" stroke="#000000" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Tall vertical left upward stroke & deep drop -->
-    <path d="M 326 95 L 320 230 L 308 420 L 296 652 L 336 430 L 348 485 L 360 435 L 372 490 L 382 432 L 396 496 L 406 435 L 420 505 L 508 190" />
-    
-    <!-- Long downward slash passing through and descending down to the tail -->
-    <path d="M 508 190 L 488 320 L 412 660 L 380 820" />
-    
-    <!-- Rightward upward swooping underline flick stroke -->
-    <path d="M 412 660 C 435 645, 470 595, 532 530" />
+  <defs>
+    <!-- 24K Luxury Metallic Gold Gradient -->
+    <linearGradient id="sigGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="25%" stop-color="#f59e0b" />
+      <stop offset="60%" stop-color="#d97706" />
+      <stop offset="85%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <!-- Interactive Gold Shimmer Pulse Gradient -->
+    <linearGradient id="shimmerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="50%" stop-color="#fffbeb" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <!-- Golden Aura Glow Filter -->
+    <filter id="sigGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feFlood flood-color="#f59e0b" flood-opacity="0.6" result="glowColor" />
+      <feComposite in="glowColor" in2="blur" operator="in" result="glow" />
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    @keyframes drawSignPath1 {
+      0% { stroke-dashoffset: 1800; opacity: 0; filter: drop-shadow(0 0 0 transparent); }
+      20% { opacity: 1; }
+      100% { stroke-dashoffset: 0; opacity: 1; filter: drop-shadow(0 0 8px rgba(245,158,11,0.7)); }
+    }
+    @keyframes drawSignPath2 {
+      0% { stroke-dashoffset: 1200; opacity: 0; }
+      35% { stroke-dashoffset: 1200; opacity: 0; }
+      45% { opacity: 1; }
+      100% { stroke-dashoffset: 0; opacity: 1; filter: drop-shadow(0 0 8px rgba(245,158,11,0.7)); }
+    }
+    @keyframes drawSignPath3 {
+      0% { stroke-dashoffset: 600; opacity: 0; }
+      65% { stroke-dashoffset: 600; opacity: 0; }
+      72% { opacity: 1; }
+      100% { stroke-dashoffset: 0; opacity: 1; filter: drop-shadow(0 0 10px rgba(245,158,11,0.85)); }
+    }
+    @keyframes popDot {
+      0%, 75% { transform: scale(0); opacity: 0; }
+      85% { transform: scale(1.4); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 10px rgba(245,158,11,0.9)); }
+    }
+    @keyframes nameEntrance {
+      0%, 70% { opacity: 0; transform: translateY(12px) scale(0.95); letter-spacing: 0.1em; }
+      85% { opacity: 0.8; transform: translateY(0) scale(1.04); }
+      100% { opacity: 1; transform: translateY(0) scale(1); letter-spacing: 0.18em; }
+    }
+    @keyframes goldPulse {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(245,158,11,0.5)); }
+      50% { filter: drop-shadow(0 0 16px rgba(251,191,36,0.95)) drop-shadow(0 0 28px rgba(217,119,6,0.6)); }
+    }
+
+    .sig-group {
+      animation: goldPulse 4s ease-in-out infinite;
+      cursor: pointer;
+    }
+    .sig-stroke-1 {
+      stroke-dasharray: 1800;
+      stroke-dashoffset: 1800;
+      animation: drawSignPath1 2.2s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+    }
+    .sig-stroke-2 {
+      stroke-dasharray: 1200;
+      stroke-dashoffset: 1200;
+      animation: drawSignPath2 2.6s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+    }
+    .sig-stroke-3 {
+      stroke-dasharray: 600;
+      stroke-dashoffset: 600;
+      animation: drawSignPath3 2.9s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+    }
+    .sig-dot-1 {
+      transform-origin: 542px 408px;
+      animation: popDot 3.0s ease-out forwards;
+    }
+    .sig-dot-2 {
+      transform-origin: 652px 216px;
+      animation: popDot 3.2s ease-out forwards;
+    }
+    .sig-name-text {
+      font-family: 'Cinzel', 'Trajan Pro', 'Georgia', serif;
+      font-size: 38px;
+      font-weight: 700;
+      fill: url(#sigGoldGrad);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      animation: nameEntrance 3.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      filter: drop-shadow(0 2px 8px rgba(245,158,11,0.6));
+    }
+  </style>
+
+  <g class="sig-group" filter="url(#sigGlow)">
+    <g fill="none" stroke="url(#sigGoldGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Tall vertical left upward stroke & deep drop -->
+      <path class="sig-stroke-1" d="M 326 95 L 320 230 L 308 420 L 296 652 L 336 430 L 348 485 L 360 435 L 372 490 L 382 432 L 396 496 L 406 435 L 420 505 L 508 190" />
+      
+      <!-- Long downward slash passing through and descending down to the tail -->
+      <path class="sig-stroke-2" d="M 508 190 L 488 320 L 412 660 L 380 820" />
+      
+      <!-- Rightward upward swooping underline flick stroke -->
+      <path class="sig-stroke-3" d="M 412 660 C 435 645, 470 595, 532 530" />
+    </g>
+
+    <!-- Prominent official signature accent dot -->
+    <circle class="sig-dot-1" cx="542" cy="408" r="12" fill="url(#sigGoldGrad)" />
+
+    <!-- Secondary upper register dot mark -->
+    <circle class="sig-dot-2" cx="652" cy="216" r="3.5" fill="url(#sigGoldGrad)" />
+
+    <!-- Authorized Signature Name Calligraphy -->
+    <text x="440" y="870" text-anchor="middle" class="sig-name-text">Hafiz Abdul Moiz</text>
   </g>
-  <!-- Prominent official signature accent dot -->
-  <circle cx="542" cy="408" r="11" fill="#000000" />
-  <!-- Secondary upper register dot mark -->
-  <circle cx="652" cy="216" r="2.5" fill="#000000" opacity="0.6" />
 </svg>

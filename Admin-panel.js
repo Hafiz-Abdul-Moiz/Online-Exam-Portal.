@@ -244,6 +244,24 @@ function renderPasscodes() {
   }).join("") || '<p class="modal-copy">No one-time codes yet. Create a student entry to issue the first code.</p>';
 }
 
+function getCandidateTotalMarks(result) {
+  if (result && Number(result.totalMarks) > 0) return Number(result.totalMarks);
+  const exam = (result?.candidate?.exam || result?.exam || "").toLowerCase();
+  if (exam.includes("english") && !exam.includes("group")) return 100;
+  if (exam.includes("web") || exam.includes("html")) return 100;
+  if (exam.includes("board") || exam.includes("all subjects")) return 400;
+  return 75; // Computer Science, Mathematics, Physics, Pakistan Studies: 75 Marks
+}
+
+function getCandidatePassingMarks(result) {
+  if (result && Number(result.passingMarks) > 0) return Number(result.passingMarks);
+  const exam = (result?.candidate?.exam || result?.exam || "").toLowerCase();
+  if (exam.includes("english") && !exam.includes("group")) return 50;
+  if (exam.includes("web") || exam.includes("html")) return 40;
+  if (exam.includes("board") || exam.includes("all subjects")) return 130;
+  return 25; // Passing requirement: 25 Marks (33% passing rule)
+}
+
 function renderResults() {
   const container = adminElement("resultList");
   if (!container) return;
@@ -251,8 +269,11 @@ function renderResults() {
   adminElement("resultCount").textContent = String(entries.length);
 
   if (entries.length > 0) {
-    const totalMarks = entries.reduce((acc, [, r]) => acc + (Number(r?.marks) || 0), 0);
-    const avgScore = Math.round(totalMarks / entries.length);
+    const totalMarksObtained = entries.reduce((acc, [, r]) => acc + (Number(r?.marks) || 0), 0);
+    const totalMarksPossible = entries.reduce((acc, [, r]) => acc + getCandidateTotalMarks(r), 0);
+    const avgScore = Math.round(totalMarksObtained / entries.length);
+    const avgTotal = Math.round(totalMarksPossible / entries.length);
+    const avgPercentage = totalMarksPossible > 0 ? Math.round((totalMarksObtained / totalMarksPossible) * 100) : 0;
     const passedCount = entries.filter(([, r]) => r?.status === "PASSED").length;
     const passRate = Math.round((passedCount / entries.length) * 100);
 
@@ -266,7 +287,7 @@ function renderResults() {
       }
     });
 
-    adminElement("kpiAvgScore").textContent = `${avgScore} / 100`;
+    adminElement("kpiAvgScore").textContent = `${avgScore} / ${avgTotal} (${avgPercentage}%)`;
     adminElement("kpiPassRate").textContent = `${passRate}% (${passedCount}/${entries.length})`;
     adminElement("kpiTopScorer").textContent = topScorer ? `${topScorer} (${topScore})` : "—";
     adminElement("kpiTotalResults").textContent = String(entries.length);
@@ -298,12 +319,15 @@ function renderResults() {
     const examType = isPermanent ? "Permanent Lifetime ID" : "One-Time Code";
     const status = result.status || "COMPLETED";
     const isPassed = status === "PASSED";
+    const totalMarks = getCandidateTotalMarks(result);
+    const passMarks = getCandidatePassingMarks(result);
+    const percentage = Math.round(((Number(result.marks) || 0) / totalMarks) * 100);
 
     return `
       <article class="admin-row">
         <div class="admin-row-main">
           <strong>${adminEscape(studentName)} · <span style="color:${isPassed ? "#4ade80" : "#f87171"};">${adminEscape(status)}</span></strong>
-          <small>ID: ${adminEscape(studentId)} · ${adminEscape(result.candidate?.exam || result.exam || "Computer Science Group")} · Marks: <strong>${adminEscape(result.marks ?? "—")}/100</strong> · ${examType}</small>
+          <small>ID: ${adminEscape(studentId)} · ${adminEscape(result.candidate?.exam || result.exam || "Computer Science Group")} · Marks: <strong style="color:${isPassed ? "#4ade80" : "#f87171"};">${adminEscape(result.marks ?? "—")} / ${totalMarks}</strong> (${percentage}%) · <span style="color:#6ee7b7;">Pass: ${passMarks}</span> · ${examType}</small>
         </div>
         <div class="admin-row-actions">
           <button class="btn-generate-marksheet" type="button" data-open-marksheet-key="${adminEscape(key)}">
@@ -316,6 +340,73 @@ function renderResults() {
         </div>
       </article>`;
   }).join("");
+}
+
+function exportResultsToCsv() {
+  const entries = Object.entries(resultsCache);
+  if (!entries.length) {
+    window.alert("Export karne ke liye koi exam results data maujood nahi hai!");
+    return;
+  }
+  const headers = [
+    "Record ID",
+    "Student Name",
+    "Student ID / Roll No",
+    "Father Name",
+    "Candidate Type",
+    "Exam / Subject",
+    "Marks Obtained",
+    "Total Marks",
+    "Percentage",
+    "Passing Marks Req",
+    "Status",
+    "Date & Time",
+    "Remarks / Disqualification Reason"
+  ];
+  const rows = entries.map(([key, result]) => {
+    const candidate = result.candidate || {};
+    const name = candidate.fullName || candidate.studentName || result.studentName || "Student";
+    const studentId = candidate.studentId || result.studentId || "";
+    const fatherName = candidate.fatherName || result.fatherName || "";
+    const isPermanent = candidate.isPermanent === true || result.isPermanent === true;
+    const candType = isPermanent ? "Permanent Lifetime ID" : "One-Time Code";
+    const exam = candidate.exam || result.exam || "Computer Science Group";
+    const marks = result.marks ?? "0";
+    const totalMarks = getCandidateTotalMarks(result);
+    const passMarks = getCandidatePassingMarks(result);
+    const pct = totalMarks > 0 ? Math.round(((Number(marks) || 0) / totalMarks) * 100) + "%" : "0%";
+    const status = result.status || "COMPLETED";
+    const dateStr = result.submittedAt ? new Date(result.submittedAt).toLocaleString() : (result.date || "");
+    const remarks = result.reason || result.terminationReason || "";
+
+    return [
+      key,
+      name,
+      studentId,
+      fatherName,
+      candType,
+      exam,
+      marks,
+      totalMarks,
+      pct,
+      passMarks,
+      status,
+      dateStr,
+      remarks
+    ].map(val => `"${String(val ?? "").replace(/"/g, '""')}"`);
+  });
+
+  const csvContent = "\uFEFF" + [headers.map(h => `"${h}"`).join(","), ...rows.map(r => r.join(","))].join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const now = new Date().toISOString().slice(0, 10);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Online_Exam_Portal-Results_${now}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 // 4. VVIP MARKSHEET HUB RENDERER
@@ -343,7 +434,10 @@ function renderMarksheetCandidates() {
     const studentName = r.candidate?.fullName || r.candidate?.studentName || r.studentName || "Student";
     const studentId = r.candidate?.studentId || r.studentId || "—";
     const fatherName = r.candidate?.fatherName || r.fatherName || "—";
-    const marks = r.marks ?? 0;
+    const marks = Number(r.marks ?? 0);
+    const totalMarks = getCandidateTotalMarks(r);
+    const passMarks = getCandidatePassingMarks(r);
+    const percentage = Math.round((marks / totalMarks) * 100);
     const status = (r.status || "COMPLETED").toUpperCase();
     const exam = r.candidate?.exam || r.exam || "Computer Science Group";
     const isPassed = status === "PASSED";
@@ -368,7 +462,7 @@ function renderMarksheetCandidates() {
           </div>
           <div class="perm-row-details">
             <span>Father: <strong>${adminEscape(fatherName)}</strong></span>
-            <span>Marks: <strong style="color:${isPassed ? "#4ade80" : "#f87171"}; font-size:0.95rem;">${marks} / 100</strong></span>
+            <span>Marks: <strong style="color:${isPassed ? "#4ade80" : "#f87171"}; font-size:0.95rem;">${marks} / ${totalMarks}</strong> (${percentage}%) · <small style="color:#94a3b8;">Pass: ${passMarks}</small></span>
             <span>Exam: <strong>${adminEscape(exam)}</strong></span>
             ${r.reason ? `<span>Forensic Note: <em style="color:#f87171;">${adminEscape(r.reason)}</em></span>` : ""}
           </div>
@@ -395,7 +489,10 @@ function openAuditModal(resultKey) {
   const fatherName = result.candidate?.fatherName || result.fatherName || "—";
   const phone = result.candidate?.phone || result.phone || "—";
   const exam = result.candidate?.exam || result.exam || "Computer Science Group";
-  const marks = result.marks ?? 0;
+  const marks = Number(result.marks ?? 0);
+  const totalMarks = getCandidateTotalMarks(result);
+  const passMarks = getCandidatePassingMarks(result);
+  const percentage = Math.round((marks / totalMarks) * 100);
   const status = result.status || "COMPLETED";
   const isPermanent = result.candidate?.isPermanent === true || result.isPermanent === true;
   const isPassed = status === "PASSED";
@@ -425,7 +522,7 @@ function openAuditModal(resultKey) {
       <div class="audit-profile-item"><small>Mobile Number</small><strong>${adminEscape(phone)}</strong></div>
       <div class="audit-profile-item"><small>Assigned Exam</small><strong>${adminEscape(exam)}</strong></div>
       <div class="audit-profile-item"><small>Access Mode</small><strong>${isPermanent ? "Permanent Lifetime ID" : "One-Time Code"}</strong></div>
-      <div class="audit-profile-item"><small>Final Marks</small><strong style="color:${isPassed ? "#4ade80" : "#f87171"}; font-size:1.2rem;">${marks} / 100 (${marks}%)</strong></div>
+      <div class="audit-profile-item"><small>Final Marks</small><strong style="color:${isPassed ? "#4ade80" : "#f87171"}; font-size:1.2rem;">${marks} / ${totalMarks} (${percentage}%)</strong><small style="color:#94a3b8; display:block; margin-top:2px;">Passing Criteria: ${passMarks} / ${totalMarks} Marks</small></div>
       <div class="audit-profile-item"><small>Official Verdict</small><strong style="color:${isPassed ? "#4ade80" : "#f87171"};">${adminEscape(status)}</strong></div>
       <div class="audit-profile-item"><small>Exam Submitted</small><strong>${timestamp}</strong></div>
     </div>
@@ -578,7 +675,7 @@ function copyPermanentCredentials(studentKey) {
   const item = permanentStudentsCache[studentKey];
   if (!item) return;
 
-  const textToCopy = `=== SkillTester Exam Credentials ===
+  const textToCopy = `=== Online Exam Portal Exam Credentials ===
 Student ID: ${item.studentId}
 Lifetime Password: ${UNIVERSAL_LIFETIME_PASSWORD}
 Student Name: ${item.studentName}
@@ -601,7 +698,7 @@ function copyOneTimeCredentials(code) {
   const item = passcodesCache[code];
   if (!item) return;
 
-  const textToCopy = `=== SkillTester One-Time Passcode ===
+  const textToCopy = `=== Online Exam Portal One-Time Passcode ===
 Student ID: ${item.studentId}
 One-Time Code: ${code}
 Student Name: ${item.studentName}
@@ -778,7 +875,48 @@ function switchSubnav(tabName) {
   }
 }
 
-// Instant Manual Marksheet Form Handler
+// Dedicated Board 5-Subject Consolidated Marksheet Form Handler (400 Marks)
+adminElement("boardMarksheetForm")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const id = adminElement("boardStudentId").value.trim().toUpperCase();
+  const name = adminElement("boardStudentName").value.trim();
+  const father = adminElement("boardFatherName").value.trim();
+  const phone = adminElement("boardPhone").value.trim();
+  const eng = Math.max(0, Math.min(100, Number(adminElement("boardMarksEng").value) || 0));
+  const cs = Math.max(0, Math.min(75, Number(adminElement("boardMarksCs").value) || 0));
+  const math = Math.max(0, Math.min(75, Number(adminElement("boardMarksMath").value) || 0));
+  const phy = Math.max(0, Math.min(75, Number(adminElement("boardMarksPhy").value) || 0));
+  const pak = Math.max(0, Math.min(75, Number(adminElement("boardMarksPak").value) || 0));
+  const status = adminElement("boardStatus").value;
+  const reason = adminElement("boardReason").value.trim();
+
+  const totalMarks = 400;
+  const sumMarks = eng + cs + math + phy + pak;
+
+  const url = `Marksheet.html?studentId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&father=${encodeURIComponent(father)}&phone=${encodeURIComponent(phone)}&exam=${encodeURIComponent("Computer Science Board Exam")}&totalMarks=400&marks=${sumMarks}&eng=${eng}&cs=${cs}&math=${math}&phy=${phy}&pak=${pak}&status=${encodeURIComponent(status)}&reason=${encodeURIComponent(reason)}`;
+  (window.top || window).location.href = url;
+});
+
+// Single Subject Instant Manual Marksheet Form Handler
+function updateInstMarksMeta() {
+  const examVal = adminElement("instExam")?.value || "";
+  const marksInput = adminElement("instMarks");
+  const marksLabel = adminElement("instMarksLabel");
+  if (!marksInput || !marksLabel) return;
+
+  const lower = examVal.toLowerCase();
+  let max = 75;
+  let pass = 25;
+  if (lower.includes("english") || lower.includes("web")) {
+    max = 100;
+    pass = lower.includes("english") ? 50 : 40;
+  }
+  marksInput.max = max;
+  marksLabel.textContent = `Marks Obtained (out of ${max}, Passing: ${pass})`;
+}
+adminElement("instExam")?.addEventListener("change", updateInstMarksMeta);
+updateInstMarksMeta();
+
 adminElement("instantMarksheetForm")?.addEventListener("submit", (e) => {
   e.preventDefault();
   const id = adminElement("instId").value.trim().toUpperCase();
@@ -786,11 +924,22 @@ adminElement("instantMarksheetForm")?.addEventListener("submit", (e) => {
   const father = adminElement("instFather").value.trim();
   const phone = adminElement("instPhone").value.trim();
   const exam = adminElement("instExam").value;
-  const marks = adminElement("instMarks").value;
+  const marks = Number(adminElement("instMarks").value) || 0;
   const status = adminElement("instStatus").value;
   const reason = adminElement("instReason").value.trim();
 
-  const url = `Marksheet.html?studentId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&father=${encodeURIComponent(father)}&phone=${encodeURIComponent(phone)}&exam=${encodeURIComponent(exam)}&marks=${encodeURIComponent(marks)}&status=${encodeURIComponent(status)}&reason=${encodeURIComponent(reason)}`;
+  const lower = exam.toLowerCase();
+  let totalMarks = 75;
+  let passingMarks = 25;
+  if (lower.includes("english")) {
+    totalMarks = 100;
+    passingMarks = 50;
+  } else if (lower.includes("web")) {
+    totalMarks = 100;
+    passingMarks = 40;
+  }
+
+  const url = `Marksheet.html?studentId=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&father=${encodeURIComponent(father)}&phone=${encodeURIComponent(phone)}&exam=${encodeURIComponent(exam)}&totalMarks=${totalMarks}&passingMarks=${passingMarks}&marks=${marks}&status=${encodeURIComponent(status)}&reason=${encodeURIComponent(reason)}`;
   (window.top || window).location.href = url;
 });
 
@@ -847,6 +996,7 @@ adminElement("filterMarksheetTerminated")?.addEventListener("click", (e) => {
 
 adminElement("permSearch")?.addEventListener("input", renderPermanentStudents);
 adminElement("resultSearch")?.addEventListener("input", renderResults);
+adminElement("exportCsvBtn")?.addEventListener("click", exportResultsToCsv);
 
 adminElement("closeAuditModalBtn")?.addEventListener("click", closeAuditModal);
 adminElement("dismissAuditModalBtn")?.addEventListener("click", closeAuditModal);

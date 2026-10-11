@@ -129,20 +129,32 @@ function renderLiveRadar() {
     const mins = Math.floor(secondsLeft / 60);
     const secs = secondsLeft % 60;
     const timeFormatted = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-    const aiStatus = sess?.aiWarning ? "⚠️ AI Alert" : "🛡️ Clean";
+    const isPaused = sess?.isPaused === true;
+    const pauseStatus = isPaused ? "⏸️ PAUSED (Emergency Leave)" : (sess?.aiWarning ? "⚠️ AI Alert" : "🛡️ Clean");
 
     return `
-      <div class="radar-student-card">
+      <div class="radar-student-card ${isPaused ? "radar-card-paused" : ""}">
         <div>
           <strong>${adminEscape(studentName)} <span class="perm-id-badge">${adminEscape(studentId)}</span></strong>
           <div class="radar-telemetry">
             <span>Exam: <strong>${adminEscape(exam)}</strong></span>
             <span>Progress: <strong>Q${currentQ} / ${totalQ}</strong></span>
             <span>Time Left: <strong>${timeFormatted}</strong></span>
-            <span>AI Sentinel: <strong style="color:#4ade80;">${adminEscape(aiStatus)}</strong></span>
+            <span>AI Sentinel: <strong style="color:${isPaused ? "#f59e0b" : "#4ade80"};">${adminEscape(pauseStatus)}</strong></span>
           </div>
         </div>
         <div class="radar-actions">
+          ${isPaused
+            ? `<button class="btn-radar-resume" type="button" data-resume-live="${adminEscape(sessionId)}" data-student-name="${adminEscape(studentName)}">
+                ▶️ Resume Exam
+              </button>`
+            : `<button class="btn-radar-pause" type="button" data-pause-live="${adminEscape(sessionId)}" data-student-name="${adminEscape(studentName)}" title="Emergency / Restroom Leave Pause">
+                ⏸️ Emergency / Restroom Pause
+              </button>`
+          }
+          <button class="btn-radar-extend" type="button" data-extend-live="${adminEscape(sessionId)}" data-student-name="${adminEscape(studentName)}" title="Add +5 or +10 Minutes">
+            ⏱️ +Time
+          </button>
           <button class="btn-radar-warn" type="button" data-warn-live="${adminEscape(sessionId)}" data-student-name="${adminEscape(studentName)}">
             ⚠️ Send Warning
           </button>
@@ -407,6 +419,30 @@ function exportResultsToCsv() {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+function exportResultsToJson() {
+  const entries = Object.entries(resultsCache);
+  if (!entries.length) {
+    window.alert("Backup export karne ke liye koi exam results data maujood nahi hai!");
+    return;
+  }
+  const jsonStr = JSON.stringify(resultsCache, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const now = new Date().toISOString().slice(0, 10);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Online_Exam_Portal-Full_Backup_${now}.json`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  setAdminNotice("Full JSON database backup file download ho gayi!");
+}
+
+function printResultsSummary() {
+  window.print();
 }
 
 // 4. VVIP MARKSHEET HUB RENDERER
@@ -997,6 +1033,8 @@ adminElement("filterMarksheetTerminated")?.addEventListener("click", (e) => {
 adminElement("permSearch")?.addEventListener("input", renderPermanentStudents);
 adminElement("resultSearch")?.addEventListener("input", renderResults);
 adminElement("exportCsvBtn")?.addEventListener("click", exportResultsToCsv);
+adminElement("exportJsonBtn")?.addEventListener("click", exportResultsToJson);
+adminElement("printResultsSummaryBtn")?.addEventListener("click", printResultsSummary);
 
 adminElement("closeAuditModalBtn")?.addEventListener("click", closeAuditModal);
 adminElement("dismissAuditModalBtn")?.addEventListener("click", closeAuditModal);
@@ -1004,6 +1042,53 @@ adminElement("printAuditReportBtn")?.addEventListener("click", () => window.prin
 
 // Click delegations
 adminElement("liveRadarContainer")?.addEventListener("click", async (event) => {
+  const pauseBtn = event.target.closest("[data-pause-live]");
+  if (pauseBtn) {
+    const sessionId = pauseBtn.dataset.pauseLive;
+    const name = pauseBtn.dataset.studentName;
+    const reason = window.prompt(`Candidate "${name}" ke liye Pause ka reason darj karein (e.g. Urgent Washroom / Medical Emergency):`, "Medical / Restroom Leave (Authorized by Proctor)");
+    if (reason && reason.trim()) {
+      await adminDatabase.ref(`activeExamSessions/${sessionId}`).update({
+        isPaused: true,
+        pauseReason: reason.trim(),
+        pausedAt: Date.now()
+      });
+      setAdminNotice(`Candidate "${name}" ka exam EMERGENCY PAUSE par daal diya gaya. Screen curtain lock ho gayi hai.`);
+    }
+    return;
+  }
+
+  const resumeBtn = event.target.closest("[data-resume-live]");
+  if (resumeBtn) {
+    const sessionId = resumeBtn.dataset.resumeLive;
+    const name = resumeBtn.dataset.studentName;
+    if (window.confirm(`Candidate "${name}" ka exam RESUME karna hai? Screen unlock ho jayegi aur clock dobara chal paregi.`)) {
+      await adminDatabase.ref(`activeExamSessions/${sessionId}`).update({
+        isPaused: false,
+        pauseReason: null,
+        resumedAt: Date.now()
+      });
+      setAdminNotice(`Candidate "${name}" ka exam wapas ACTIVE ho gaya.`);
+    }
+    return;
+  }
+
+  const extendBtn = event.target.closest("[data-extend-live]");
+  if (extendBtn) {
+    const sessionId = extendBtn.dataset.extendLive;
+    const name = extendBtn.dataset.studentName;
+    const minsStr = window.prompt(`Candidate "${name}" ko kitne additional minutes dene hain? (e.g. 5, 10, 15)`, "5");
+    const additionalMins = Number(minsStr);
+    if (!isNaN(additionalMins) && additionalMins > 0) {
+      await adminDatabase.ref(`activeExamSessions/${sessionId}`).update({
+        extraSecondsGranted: (activeSessionsCache[sessionId]?.extraSecondsGranted || 0) + (additionalMins * 60),
+        lastExtensionGrantedAt: Date.now()
+      });
+      setAdminNotice(`Candidate "${name}" ko +${additionalMins} minute ka extra time grant kar diya gaya!`);
+    }
+    return;
+  }
+
   const warnBtn = event.target.closest("[data-warn-live]");
   if (warnBtn) {
     const sessionId = warnBtn.dataset.warnLive;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Official Examination Security, Academic Integrity & Privacy Policy — SkillTester Autonomous Board">
-  <title>Academic Privacy Policy &amp; Security Protocol — Online Exam portal</title>
+  <title>Academic Privacy Policy &amp; Security Protocol — SkillTester</title>
   <link rel="stylesheet" href="Privicy-policy.css?v=2">
 </head>
 <body class="policy-body">
@@ -15,7 +15,7 @@
       <div class="brand-logo-badge">&lt;/&gt;</div>
       <div class="brand-text">
         <h1>Online Exam Portal</h1>
-        <p>Autonomous AI Proctored Assessment Authority 2026</p>
+        <p>AUTONOMOUS AI PROCTORED ASSESSMENT AUTHORITY 2026</p>
       </div>
     </div>
     <div class="topbar-actions">
@@ -200,6 +200,80 @@
       </p>
     </section>
 
+    <!-- SECTION 5: DYNAMIC QUESTION SHUFFLING & MULTI-VERSION DEFENSE -->
+    <section class="policy-section">
+      <div class="section-head">
+        <div class="section-icon">🔀</div>
+        <h3>5. Dynamic Question Shuffling &amp; Multi-Version Anti-Peeping Protocol</h3>
+      </div>
+      <p style="color:var(--muted); font-size:0.9rem; line-height:1.6; margin-bottom:1.25rem;">
+        To eliminate physical glance-copying and adjacent screen peeping in exam halls and computer laboratories, 
+        SkillTester deploys an automated <strong>Dynamic Seeded Randomization Engine</strong>:
+      </p>
+      <div class="rules-grid">
+        <div class="rule-card">
+          <span class="rule-tag enforced">Algorithmic Defense</span>
+          <strong>150-Question Master Pool Dynamic Sampling</strong>
+          <p>
+            Har candidate ke liye 150 questions ke comprehensive pool se 60 questions randomly sample kiye jate hain (HTML5 se 20, CSS3 se 20, aur JavaScript se 20). Barabar baithne wale do candidates ka paper set mukammal mukhtalif hota hai.
+          </p>
+        </div>
+
+        <div class="rule-card">
+          <span class="rule-tag enforced">Option-Level Scramble</span>
+          <strong>Multi-Permutation Option Shuffling (A, B, C, D)</strong>
+          <p>
+            Agar do students ke samne coincidentally ek hi question aa bhi jaye, tab bhi options ke sequence (A, B, C, D) dono screens par alag order mein shuffle hote hain. Ek student ka Option A doosre student ka Option C ya D ho sakta hai.
+          </p>
+        </div>
+
+        <div class="rule-card">
+          <span class="rule-tag enforced">Cryptographic Audit</span>
+          <strong>Deterministic Candidate Hash Verification</strong>
+          <p>
+            Har candidate ka randomized paper student ID aur secure seed ke zariye bind hota hai. Answer evaluation usi specific seed ke relative order par automatically hoti hai, jisse 100% fair aur transparent marking ensure hoti hai.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 6: EMERGENCY PROTOCOL & TEMPORARY MEDICAL / RESTROOM LEAVE -->
+    <section class="policy-section">
+      <div class="section-head">
+        <div class="section-icon">🏥</div>
+        <h3>6. Emergency Protocol &amp; Temporary Medical / Restroom Leave Clause</h3>
+      </div>
+      <p style="color:var(--muted); font-size:0.9rem; line-height:1.6; margin-bottom:1.25rem;">
+        In bona-fide emergency situations (medical distress, sudden illness, or urgent restroom break during long sessions), 
+        the Autonomous Board provides a secure <strong>Emergency Pause &amp; Time-Extension Mechanism</strong> governed by strict proctor oversight:
+      </p>
+      <div class="rules-grid">
+        <div class="rule-card">
+          <span class="rule-tag enforced">Admin Authorization</span>
+          <strong>Proctor-Approved Official Pause</strong>
+          <p>
+            Candidate self-pause nahi kar sakta. Emergency ke waqt physical hall supervisor Admin Command Center se candidate ki session ID par <strong>"Official Emergency / Restroom Pause"</strong> trigger karega.
+          </p>
+        </div>
+
+        <div class="rule-card">
+          <span class="rule-tag enforced">Screen Security</span>
+          <strong>Curtain Lock &amp; Question Blinding</strong>
+          <p>
+            Pause hone par candidate ki screen par secure curtain lock active ho jata hai aur questions hide ho jate hain taake pause ke dauran external help ya book consultation na ki ja sake.
+          </p>
+        </div>
+
+        <div class="rule-card">
+          <span class="rule-tag enforced">Time Compensation</span>
+          <strong>Automatic Clock Freezing &amp; Time Extension</strong>
+          <p>
+            Emergency period ke dauran exam ka main countdown timer pause ho jata hai. Wapsi par proctor time extend (+5, +10 ya +15 minutes) de kar exam resume karwa sakta hai bina kisi penalty ke.
+          </p>
+        </div>
+      </div>
+    </section>
+
     <!-- OFFICIAL BOARD ATTESTATION -->
     <section class="attestation-box">
       <div class="attestation-details">
@@ -231,7 +305,7 @@
 
     document.addEventListener("keydown", (e) => {
       const key = e.key || "";
-      const isFKey = /^F\d+$/.test(key) || (e.keyCode >= 112 && e.keyCode <= 123);
+      const isFKey = /^F\d+$/.test(key) || (event.keyCode >= 112 && event.keyCode <= 123);
       const isDangerousCtrl = e.ctrlKey && ["u", "s", "p", "r", "i", "j"].includes(key.toLowerCase());
       if (isFKey || isDangerousCtrl) {
         e.preventDefault();

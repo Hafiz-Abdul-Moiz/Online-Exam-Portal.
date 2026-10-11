@@ -542,6 +542,8 @@ const state = {
   examActive: false,
   finishing: false,
   finishModalOpen: false,
+  isPaused: false,
+  extraSecondsGranted: 0,
   aiWarningsCount: 0,
   maxAiWarnings: 6
 };
@@ -713,17 +715,50 @@ function startExam(exam, durationMinutes = 60, candidateInfo = null) {
 
   renderQuestion();
 
-  const deadline = Date.now() + state.secondsLeft * 1000;
   const updateTimer = () => {
-    state.secondsLeft = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    if (state.isPaused) return; // Freeze timer during official pause
+    state.secondsLeft = Math.max(0, state.secondsLeft - 1);
     examElement("timer").textContent = formatTime(state.secondsLeft);
     if (state.secondsLeft <= 120) examElement("timer").classList.add("timer-warning");
     if (state.secondsLeft === 0) finishExam("Time expired.");
   };
-  updateTimer();
+  examElement("timer").textContent = formatTime(state.secondsLeft);
   state.timerId = window.setInterval(() => {
     if (state.examActive) updateTimer();
   }, 1000);
+}
+
+function handleExamPause(reason) {
+  state.isPaused = true;
+  const overlay = examElement("emergencyPauseOverlay");
+  const reasonEl = examElement("emergencyPauseReasonText");
+  const frozenTimerEl = examElement("emergencyPauseFrozenTimer");
+  if (reasonEl) reasonEl.textContent = reason || "Emergency / Restroom Break (Authorized by Proctor)";
+  if (frozenTimerEl) frozenTimerEl.textContent = `PAUSED AT: ${formatTime(state.secondsLeft)}`;
+  if (overlay) overlay.classList.remove("hidden");
+}
+
+function handleExamResume() {
+  state.isPaused = false;
+  const overlay = examElement("emergencyPauseOverlay");
+  if (overlay) overlay.classList.add("hidden");
+  examElement("timer").textContent = formatTime(state.secondsLeft);
+}
+
+function handleTimeExtension(extraSeconds) {
+  const diff = Number(extraSeconds) - (state.extraSecondsGranted || 0);
+  if (diff > 0) {
+    state.secondsLeft += diff;
+    state.extraSecondsGranted = Number(extraSeconds);
+    examElement("timer").textContent = formatTime(state.secondsLeft);
+    examElement("timer").classList.remove("timer-warning");
+    const banner = examElement("adminWarningBanner");
+    const text = examElement("adminWarningText");
+    if (banner && text) {
+      text.textContent = `⏱️ Official Extension Granted: +${Math.round(diff / 60)} minute(s) added by Administrator!`;
+      banner.classList.remove("hidden");
+    }
+  }
 }
 
 function resetToOverview() {
@@ -2000,6 +2035,15 @@ window.addEventListener("message", (event) => {
       text.textContent = event.data.warning || "Please maintain full focus on the exam arena.";
       banner.classList.remove("hidden");
     }
+  }
+  if (event.data.type === "skilltester:exam-pause") {
+    handleExamPause(event.data.reason);
+  }
+  if (event.data.type === "skilltester:exam-resume") {
+    handleExamResume();
+  }
+  if (event.data.type === "skilltester:time-extension") {
+    handleTimeExtension(event.data.extraSeconds);
   }
 });
 

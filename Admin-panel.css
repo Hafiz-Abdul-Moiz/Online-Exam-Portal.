@@ -299,9 +299,16 @@
 .radar-container { display: grid; gap: 10px; }
 .radar-student-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; background: rgba(15, 23, 42, 0.8); flex-wrap: wrap; }
 .radar-telemetry { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; font-size: 0.78rem; color: var(--muted); }
-.radar-actions { display: flex; gap: 8px; }
+.radar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-radar-pause { background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fde68a; padding: 6px 12px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+.btn-radar-pause:hover { background: #f59e0b; color: #090d16; }
+.btn-radar-resume { background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #86efac; padding: 6px 12px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+.btn-radar-resume:hover { background: #22c55e; color: #090d16; }
+.btn-radar-extend { background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #bae6fd; padding: 6px 12px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+.btn-radar-extend:hover { background: #38bdf8; color: #090d16; }
 .btn-radar-warn { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; padding: 6px 12px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; }
 .btn-radar-term { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; padding: 6px 12px; border-radius: 8px; font-size: 0.74rem; font-weight: 700; cursor: pointer; }
+.radar-card-paused { border-color: rgba(245, 158, 11, 0.6) !important; background: rgba(38, 28, 10, 0.85) !important; }
 
 /* KPI Performance grid */
 .results-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }

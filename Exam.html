@@ -316,6 +316,26 @@
         </div>
       </div>
     </div>
+
+    <!-- OFFICIAL EMERGENCY / RESTROOM BREAK CURTAIN OVERLAY -->
+    <div id="emergencyPauseOverlay" class="emergency-pause-overlay hidden" role="dialog" aria-modal="true">
+      <div class="emergency-pause-box">
+        <div class="emergency-pause-icon">⏸️</div>
+        <h2>EXAMINATION OFFICIALLY PAUSED</h2>
+        <span class="emergency-pause-pill">AUTHORIZED EMERGENCY / RESTROOM LEAVE</span>
+        <p id="emergencyPauseReasonText">
+          Your examination has been securely paused by the Examination Controller. Exam questions are hidden to preserve integrity.
+        </p>
+        <div class="emergency-pause-clock-card">
+          <span class="clock-label">Official Exam Clock</span>
+          <strong id="emergencyPauseFrozenTimer">FROZEN / CLOCK PAUSED</strong>
+          <small>Timer will safely resume when Admin unpauses your session.</small>
+        </div>
+        <p style="color:#94a3b8; font-size:0.8rem; margin:0;">
+          Please wait for the hall supervisor or examination administrator to resume your session from the Admin Command Center.
+        </p>
+      </div>
+    </div>
   </section>
  
   <script src="Exam.js?v=24"></script>

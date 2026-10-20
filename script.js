@@ -4,10 +4,10 @@
   // ========================================================
   // 1. CONFIGURATION: PASTE YOUR PUBLIC DOWNLOAD LINK HERE!
   // ========================================================
-  // Jab aap apni "Online Exam Portal Setup 1.0.0.exe" file ko
+  // Jab aap apni "Online Exam Portal Setup 1.0.1.exe" file ko
   // Google Drive ya MediaFire par upload kar dein, to uska link
   // yahan quotes ke andar paste kar dein:
-const WINDOWS_SETUP_DOWNLOAD_URL = "https://github.com/Hafiz-Abdul-Moiz/Online-Exam-Portal./releases/download/v1.0.0/Online.Exam.Portal.Setup.1.0.0.exe";
+const WINDOWS_SETUP_DOWNLOAD_URL = "https://github.com/Hafiz-Abdul-Moiz/Online-Exam-Portal./releases/download/v1.0.1/Online.Exam.Portal.Setup.1.0.1.exe";
   // Audio Synthesizer (Pleasant Sound Effects)
   function playAudioTone(freq, type = "sine", duration = 0.15, vol = 0.12) {
     try {
@@ -174,7 +174,7 @@ const WINDOWS_SETUP_DOWNLOAD_URL = "https://github.com/Hafiz-Abdul-Moiz/Online-E
 
     function handleWindowsDownload(e) {
       playSuccessChord();
-      showToast("🚀 Downloading Online Exam Portal Setup (228 MB)...", "success");
+      showToast("🚀 Downloading Online Exam Portal Setup (124 MB)...", "success");
 
       if (WINDOWS_SETUP_DOWNLOAD_URL && WINDOWS_SETUP_DOWNLOAD_URL !== "#") {
         setTimeout(() => {

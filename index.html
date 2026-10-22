@@ -3,15 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Official Download & Architecture Hub for Online Exam Portal - Created by Hafiz Abdul Moiz">
+  <meta name="description" content="Official Download & Architecture Hub for Online Exam Portal - Created by Hafiz Abdul Moiz, with an Eternal Tribute to Miss Mahnoor">
   <title>Download Online Exam Portal | Official AI Proctored Suite</title>
   <link rel="icon" type="image/x-icon" href="icon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Outfit:wght@500;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Ambient Particle Constellation Canvas -->
   <canvas id="ambientCanvas"></canvas>
 
   <div class="page-wrapper">
+    <!-- Top Navigation -->
     <header class="top-nav">
       <a href="index.html" class="nav-brand">
         <div class="brand-icon-box">
@@ -27,13 +32,23 @@
       <nav class="nav-links">
         <a href="#features" class="nav-link">Features</a>
         <a href="#downloads" class="nav-link">Download App</a>
+        <a href="#tribute" class="nav-link nav-link-tribute">
+          <span>💖</span> Miss Mahnoor Tribute
+        </a>
         <a href="#creator" class="nav-link">Creator &amp; Authority</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button id="btnToggleSound" type="button" class="nav-btn-sound" title="Toggle audio feedback">
+          🔊 Sound ON
+        </button>
         <a id="navDownloadBtn" href="#downloads" class="nav-cta-btn">
           <span>⬇️</span> Download Setup (.exe)
         </a>
-      </nav>
+      </div>
     </header>
 
+    <!-- Hero Section -->
     <section class="hero-section">
       <div class="hero-pill-badge">
         <span class="live-pulse-dot"></span>
@@ -48,6 +63,7 @@
         A military-grade proctored academic evaluation environment engineered for zero-compromise security, operating system kiosk enforcement, autonomous pedagogical paper evaluation, and instant verified marksheets.
       </p>
 
+      <!-- Animated Floating Mascot -->
       <div class="mascot-hero-wrap">
         <div class="mascot-outer-ring">
           <div class="mascot-orbit-orb"></div>
@@ -81,35 +97,48 @@
         </div>
       </div>
 
+      <!-- Hero Call-to-Action Buttons -->
       <div class="hero-cta-group">
         <a id="heroDownloadWinBtn" href="#downloads" class="btn-hero-primary">
           <span>⚡</span> Download Windows Setup (.exe)
         </a>
-        <button id="heroApkBtn" type="button" class="btn-hero-secondary">
-          <span>📱</span> Android Mobile APK (Pending Work)
+        <button id="heroApkBtn" type="button" class="btn-hero-android-enhanced">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.3rem;">📱</span>
+            <div style="text-align:left;">
+              <div style="display:flex; align-items:center;">
+                <span id="heroApkTitle" style="font-weight:900;">Android Mobile APK</span>
+                <span id="heroApkBadge" class="btn-android-badge-pending">Pending</span>
+              </div>
+              <small id="heroApkSub" style="font-size:0.72rem; color:#a7f3d0;">Target: Before Nov 10 • Status Info</small>
+            </div>
+          </div>
+          <span style="font-size:1.1rem; color:#fbbf24;">➜</span>
         </button>
       </div>
 
+      <!-- Hero Stats Row -->
       <div class="hero-stats-row">
         <div class="stat-item">
           <span class="stat-num">256-Bit</span>
           <span class="stat-lbl">SSL Proctor Shield</span>
         </div>
         <div class="stat-item">
-          <span class="stat-num">0.0%</span>
+          <span class="stat-num" style="color:#4ade80;">0.0%</span>
           <span class="stat-lbl">Kiosk Bypass Rate</span>
         </div>
         <div class="stat-item">
-          <span class="stat-num">228 MB</span>
+          <span class="stat-num" style="color:#38bdf8;">124 MB</span>
           <span class="stat-lbl">Self-Installing Package</span>
         </div>
         <div class="stat-item">
-          <span class="stat-num">100%</span>
+          <span class="stat-num" style="color:#fbbf24;">100%</span>
           <span class="stat-lbl">Source Code Encrypted</span>
         </div>
       </div>
     </section>
 
+    <!-- Features Section -->
     <section id="features" class="features-section">
       <div class="section-header">
         <span class="section-tag">ARCHITECTURAL EXCELLENCE</span>
@@ -156,6 +185,7 @@
       </div>
     </section>
 
+    <!-- Download Section -->
     <section id="downloads" class="download-section">
       <div class="section-header">
         <span class="section-tag">OFFICIAL DISTRIBUTION HUB</span>
@@ -164,6 +194,7 @@
       </div>
 
       <div class="download-cards-grid">
+        <!-- Windows Edition Card -->
         <article class="download-card">
           <div class="card-accent-strip"></div>
           <div>
@@ -184,79 +215,292 @@
               <li><span class="check-icon">✓</span> <span><strong>Automatic Desktop Icon:</strong> Creates shortcut instantly</span></li>
               <li><span class="check-icon">✓</span> <span><strong>5-Second 2D Launch Screen:</strong> Official theme animations</span></li>
               <li><span class="check-icon">✓</span> <span><strong>Anti-Cheat Shield:</strong> Full Kiosk security integration</span></li>
-              <li><span class="check-icon">✓</span> <span><strong>Lightweight Size:</strong> ~228 MB complete bundle</span></li>
+              <li><span class="check-icon">✓</span> <span><strong>Lightweight Size:</strong> 124 MB complete bundle</span></li>
             </ul>
           </div>
 
           <div class="card-footer-action">
-  <a id="btnDownloadWindowsSetup"
-     href="https://github.com/Hafiz-Abdul-Moiz/Online-Exam-Portal./releases/download/v1.0.1/Online.Exam.Portal.Setup.1.0.1.exe"
-     class="btn-download-primary"
-     download="Online.Exam.Portal.Setup.1.0.1.exe">
-     <!-- Neon Glow Layer -->
-     <div class="btn-glow-layer"></div>
-     
-     <!-- Inner Content -->
-     <div class="btn-inner-content">
-       <span class="btn-icon-wrap">
-         <!-- Official Windows SVG Logo -->
-         <svg class="win-icon" viewBox="0 0 24 24" fill="currentColor">
-           <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.951-1.802"/>
-         </svg>
-       </span>
-       
-       <div class="btn-text-group">
-         <span class="btn-title">Download for Windows</span>
-         <span class="btn-subtitle">Setup v1.0.1 • 124 MB (.exe)</span>
-       </div>
-       
-       <span class="btn-arrow-wrap">
-         <!-- Right Arrow SVG -->
-         <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-           <path d="M5 12h14M12 5l7 7-7 7"/>
-         </svg>
-       </span>
-     </div>
-  </a>
-</div>
+            <a id="btnDownloadWindowsSetup"
+               href="https://github.com/Hafiz-Abdul-Moiz/Online-Exam-Portal./releases/download/v1.0.1/Online.Exam.Portal.Setup.1.0.1.exe"
+               class="btn-download-primary"
+               download="Online.Exam.Portal.Setup.1.0.1.exe">
+              <div class="btn-glow-layer"></div>
+              <div class="btn-inner-content">
+                <span class="btn-icon-wrap">
+                  <svg class="win-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.551H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.951-1.802"/>
+                  </svg>
+                </span>
+                
+                <div class="btn-text-group">
+                  <span class="btn-title">Download for Windows</span>
+                  <span class="btn-subtitle">Setup v1.0.1 • 124 MB (.exe)</span>
+                </div>
+                
+                <span class="btn-arrow-wrap">
+                  <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </span>
+              </div>
+            </a>
             <p class="card-meta-note">SHA-256 Verified &bull; Windows 10 / 11 (x64) &bull; Size: 124 MB</p>
           </div>
         </article>
 
-        <article class="download-card" style="border-color: rgba(245, 158, 11, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 35px rgba(245, 158, 11, 0.12);">
-          <div class="card-accent-strip" style="background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);"></div>
+        <!-- Upgraded Android Edition Card -->
+        <article class="download-card" style="border-color: rgba(245, 158, 11, 0.45); box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 35px rgba(245, 158, 11, 0.16);">
+          <div class="card-accent-strip" style="background: linear-gradient(90deg, #f59e0b, #10b981, #f59e0b);"></div>
           <div>
             <div class="card-badge-row">
-              <span class="card-badge-pending">🚧 PENDING WORK · IN DEVELOPMENT</span>
+              <span id="cardApkBadge" class="card-badge-pending">🚧 PENDING WORK · IN ACCELERATED SPRINT</span>
               <span class="version-tag">Target: v1.0.1 APK</span>
             </div>
 
-            <div class="card-icon-display" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24;">📱</div>
+            <div class="card-icon-display" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.45); color: #fbbf24;">📱</div>
 
             <h3 class="card-title">Android Mobile Edition</h3>
             <p class="card-desc">
-              Upcoming native Android APK edition tailored for Android tablets and smartphones. Engineered for on-the-go academic assessments and proctored examinations.
+              Upcoming native Android APK edition tailored for Android tablets and smartphones. Engineered for on-the-go academic assessments with responsive touch proctoring designed to potentially surpass desktop edition.
             </p>
+
+            <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 12px; margin-bottom: 18px;">
+              <div style="font-size:0.78rem; font-weight:800; color:#fbbf24; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                <span>✨</span> Target Launch: Prior to November 10th
+              </div>
+              <p style="font-size:0.75rem; color:#e2e8f0; line-height:1.4;">
+                Dedicated in tribute to our teacher <strong>Miss Mahnoor</strong> before her departure.
+              </p>
+            </div>
 
             <ul class="card-feature-list">
               <li><span class="pending-bullet">⏳</span> <span><strong>Status:</strong> Active Engineering by Hafiz Abdul Moiz</span></li>
-              <li><span class="pending-bullet">⏳</span> <span><strong>Target Platform:</strong> Android 8.0 to Android 15</span></li>
+              <li><span class="pending-bullet">⏳</span> <span><strong>Target Platform:</strong> Android 8.0 up to Android 15</span></li>
               <li><span class="pending-bullet">⏳</span> <span><strong>Mobile Sandbox:</strong> Touch-optimized examination arena</span></li>
               <li><span class="pending-bullet">⏳</span> <span><strong>Camera Proctoring:</strong> Mobile front-facing AI verification</span></li>
-              <li><span class="pending-bullet">⏳</span> <span><strong>Release Phase:</strong> Beta APK coming soon</span></li>
+              <li><span class="pending-bullet">⏳</span> <span><strong>Responsiveness:</strong> Fluid touch gestures &amp; quick loading</span></li>
             </ul>
           </div>
 
           <div class="card-action-wrap">
-            <button id="btnOpenApkPendingModal" type="button" class="btn-download-apk">
-              <span>📱</span> Download Android APK (Pending)
+            <button id="btnOpenApkPendingModal" type="button" class="btn-download-apk-enhanced">
+              <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="font-size:1.4rem;">📱</span>
+                  <div>
+                    <span id="btnApkCardTitle" style="display:block; font-size:1.02rem; font-weight:900; color:#ffffff;">Download Android APK (Pending)</span>
+                    <span id="btnApkCardSubtitle" style="display:block; font-size:0.76rem; color:#fde68a;">Click for Development &amp; Early Access Info</span>
+                  </div>
+                </div>
+                <span style="font-size:1.2rem; color:#fbbf24;">➜</span>
+              </div>
             </button>
-            <p class="card-meta-note">Under Active Construction &bull; Click for Development Status</p>
+            <p id="cardApkFooterNote" class="card-meta-note">Under Active Construction &bull; Insha'Allah Releasing Before Nov 10</p>
           </div>
         </article>
       </div>
     </section>
 
+    <!-- HEARTFELT TRIBUTE TO MISS MAHNOOR SECTION -->
+    <section id="tribute" class="tribute-section">
+      <div class="tribute-main-card">
+        <div class="tribute-gold-laser"></div>
+
+        <!-- Clean header container with zero CSS linter warnings -->
+        <div class="tribute-header-container">
+          <div class="tribute-header-badge">
+            <span>👑</span> THE MASTER'S LEGACY &bull; IMMORTAL DEDICATION
+          </div>
+          <h2 class="tribute-hero-title">
+            Eternal Tribute to <span class="tribute-name-highlight">Miss Mahnoor</span>
+          </h2>
+          <p class="tribute-subtitle">
+            Best Teacher of All Time &bull; Dedicated with Love, Tears &amp; Honor by Her Student <span class="tribute-creator-name">Hafiz Abdul Moiz</span>
+          </p>
+        </div>
+
+        <!-- Emotional November 10th Resignation Banner & Countdown -->
+        <div class="tribute-farewell-banner">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; color: #f43f5e; font-size: 0.82rem; font-weight: 900; text-transform: uppercase; margin-bottom: 6px;">
+              <span>📅</span> A Day of Tears &amp; Heartbreak: November 10th
+            </div>
+            <h3 style="font-size: 1.4rem; font-weight: 900; color: #ffffff; margin-bottom: 8px;">
+              Why November 10th Breaks Every Student's Heart
+            </h3>
+            <p style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.6;">
+              Our dearest teacher, <strong style="color:#fde68a;">Miss Mahnoor</strong>, has formally tendered her resignation from the coaching academy, and <strong style="color:#fbbf24;">November 10th</strong> marks her final day at the center. For her students, this is an emotionally overwhelming, heartbreaking day. Her classroom was our sanctuary of motivation, motherly guidance, and unmatched knowledge.
+            </p>
+          </div>
+
+          <div class="tribute-countdown-box">
+            <span style="font-size: 0.72rem; font-weight: 800; color: #fbbf24; text-transform: uppercase; letter-spacing: 0.05em;">
+              Countdown to Farewell Day (Nov 10)
+            </span>
+            <div class="countdown-digits-grid">
+              <div class="countdown-digit-cell">
+                <span id="tributeDays" class="countdown-val">00</span>
+                <span class="countdown-lbl">Days</span>
+              </div>
+              <div class="countdown-digit-cell">
+                <span id="tributeHours" class="countdown-val">00</span>
+                <span class="countdown-lbl">Hours</span>
+              </div>
+              <div class="countdown-digit-cell">
+                <span id="tributeMins" class="countdown-val">00</span>
+                <span class="countdown-lbl">Mins</span>
+              </div>
+              <div class="countdown-digit-cell">
+                <span id="tributeSecs" class="countdown-val" style="color:#f43f5e;">00</span>
+                <span class="countdown-lbl">Secs</span>
+              </div>
+            </div>
+            <small style="font-size: 0.68rem; color: #94a3b8; display: block; margin-top: 6px;">
+              Cherishing every remaining moment.
+            </small>
+          </div>
+        </div>
+
+        <!-- Dedication Letter from Hafiz Abdul Moiz -->
+        <div class="tribute-letter-box">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+            <span style="font-size: 1.8rem;">📜</span>
+            <div>
+              <h4 style="font-size: 1.15rem; font-weight: 900; color: #ffffff;">A Letter of Eternal Gratitude</h4>
+              <p style="font-size: 0.75rem; color: #fde68a;">
+                Written by <strong>Hafiz Abdul Moiz</strong> (Student, S/O Muzmmil Ahmed) &bull; Addressed to <strong>Miss Mahnoor</strong>
+              </p>
+            </div>
+          </div>
+
+          <div class="tribute-letter-quote">
+            <p style="margin-bottom: 12px; font-weight: 700; color: #fde68a;">Respected Miss Mahnoor,</p>
+            <p style="margin-bottom: 12px;">
+              Ordinary teachers teach the syllabus, but great teachers—the truly legendary ones—awaken minds and transform lives. You were never just a teacher; you were our guiding star, our quiet strength, and our inspiration to reach for greatness.
+            </p>
+            <p style="margin-bottom: 12px;">
+              When we learned you had resigned, our entire academy fell into deep sadness. <strong>November 10th</strong> is a tearful, rola dene wala din that none of us will ever forget.
+            </p>
+            <p style="margin-bottom: 12px; background: rgba(245, 158, 11, 0.15); border-left: 3px solid #fbbf24; padding: 10px 14px; border-radius: 6px;">
+              <strong>Why This App Was Built:</strong> I, <strong>Hafiz Abdul Moiz</strong>, built this entire <strong>Online Exam Portal</strong> as an everlasting digital monument to your tireless dedication, values, and unyielding belief in us. Every proctoring shield and autonomous grading algorithm reflects the standard of integrity you instilled within us.
+            </p>
+            <p>
+              Though you leave the academy halls on November 10th, your lessons are engraved in our souls forever. May Allah SWT grant you eternal health, peace, and unparalleled success in every step ahead. Ameen.
+            </p>
+            <div style="text-align: right; margin-top: 14px;">
+              <strong style="color: #fbbf24; display:block;">Your Ever-Devoted Student,</strong>
+              <span style="color: #ffffff; font-weight: 900; font-size: 1.1rem;">Hafiz Abdul Moiz</span><br>
+              <small style="color: #94a3b8;">Son of Muzmmil Ahmed &bull; Batch 2026</small>
+            </div>
+          </div>
+
+          <div class="tribute-letter-actions">
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button id="btnCopyTributeLetter" type="button" class="btn-tribute-action">
+                <span>📋</span> Copy Dedication Letter
+              </button>
+              <button id="btnPlayTributeMelody" type="button" class="btn-tribute-action" style="background:rgba(56,189,248,0.15); border-color:rgba(56,189,248,0.4); color:#7dd3fc;">
+                <span>🎶</span> Play Tribute Chime
+              </button>
+            </div>
+            <span style="font-size: 0.76rem; color: #f43f5e; font-weight: 700;">
+              ❤️ In Honour of the Greatest Teacher
+            </span>
+          </div>
+        </div>
+
+        <!-- Interactive Candle + Guestbook Row -->
+        <div class="tribute-interact-row">
+          <!-- Candle Altar -->
+          <div class="tribute-candle-card">
+            <div>
+              <span class="section-tag section-tag-gold">INTERACTIVE ALTAR</span>
+              <h4 style="font-size: 1.15rem; font-weight: 900; color: #ffffff; margin: 8px 0;">
+                Light a Candle for Miss Mahnoor
+              </h4>
+              <p style="font-size: 0.78rem; color: #94a3b8;">
+                Join students in lighting a golden beacon of respect and appreciation.
+              </p>
+
+              <!-- Animated Candle -->
+              <div class="candle-graphic-wrap">
+                <div class="candle-flame"></div>
+                <div class="candle-wick"></div>
+                <div class="candle-body"></div>
+              </div>
+
+              <div id="candleCountDisplay" class="candle-count-display">1,482</div>
+              <small style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">
+                Candles Lit in Eternal Gratitude
+              </small>
+            </div>
+
+            <button id="btnLightCandle" type="button" class="btn-light-candle" style="margin-top: 18px;">
+              <span>🕯️</span> Light a Candle of Gratitude
+            </button>
+          </div>
+
+          <!-- Student Farewell Guestbook -->
+          <div class="tribute-guestbook-wrap">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <div>
+                <h4 style="font-size: 1.1rem; font-weight: 900; color: #ffffff;">
+                  Student Farewell Wall &amp; Duas
+                </h4>
+                <p style="font-size: 0.74rem; color: #94a3b8;">
+                  Post your personal prayer or tribute to Miss Mahnoor.
+                </p>
+              </div>
+              <span style="font-size: 0.75rem; color: #fbbf24; font-weight: 800;">
+                ✨ Live Wall
+              </span>
+            </div>
+
+            <form id="tributeGuestbookForm" class="guestbook-form">
+              <input id="guestbookAuthor" type="text" placeholder="Your Name (Student)" class="guestbook-input" required>
+              <input id="guestbookMessage" type="text" placeholder="Farewell dua / tribute message to Miss Mahnoor..." class="guestbook-input" required>
+              <button type="submit" class="btn-post-tribute">
+                Post ➜
+              </button>
+            </form>
+
+            <div id="guestbookMessagesList" class="guestbook-messages-list">
+              <div class="guestbook-item-card" style="border-color: rgba(245, 158, 11, 0.6); background: rgba(30, 20, 45, 0.7);">
+                <div class="guestbook-item-author">
+                  <span>Hafiz Abdul Moiz (Lead Student)</span>
+                  <span style="font-size:0.68rem; color:#fde68a;">Official</span>
+                </div>
+                <p class="guestbook-item-text">
+                  "Miss Mahnoor, your guidance taught me that discipline and integrity are the true codes of life. You will be missed immensely."
+                </p>
+              </div>
+
+              <div class="guestbook-item-card">
+                <div class="guestbook-item-author">
+                  <span>Student Council Batch</span>
+                  <span style="font-size:0.68rem; color:#94a3b8;">2026</span>
+                </div>
+                <p class="guestbook-item-text">
+                  "Best teacher of all time! November 10th will be the most tearful day of our lives. May Allah bless you forever!"
+                </p>
+              </div>
+
+              <div class="guestbook-item-card">
+                <div class="guestbook-item-author">
+                  <span>Academy Candidate</span>
+                  <span style="font-size:0.68rem; color:#94a3b8;">Class 12</span>
+                </div>
+                <p class="guestbook-item-text">
+                  "Thank you for making difficult subjects so easy and treating every student like your own family."
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Creator Section -->
     <section id="creator" class="creator-section">
       <div class="creator-card">
         <div class="creator-gold-trim"></div>
@@ -282,6 +526,9 @@
             <p class="creator-title-row">
               Lead Technical Architect &bull; Master Examination Controller &bull; Full-Stack Systems Engineer
             </p>
+            <p style="font-size: 0.76rem; color: #fbbf24; margin-top: 4px;">
+              Devoted Student of <strong>Miss Mahnoor (Best Teacher of All Time)</strong>
+            </p>
           </div>
 
           <div class="creator-verified-seal">
@@ -303,52 +550,94 @@
       </div>
     </section>
 
+    <!-- Page Footer -->
     <footer class="page-footer">
       <div class="footer-inner">
         <p class="footer-copy">
           &copy; 2026 <strong>Online Exam Portal</strong> &bull; Autonomous Board of Technical &amp; Scientific Examinations. All rights reserved.
         </p>
         <p style="font-size:0.75rem; color:#64748b;">
-          Engineered by <strong>Hafiz Abdul Moiz</strong> (S/O Muzmmil Ahmed). Windows 64-bit Edition.
+          Engineered by <strong>Hafiz Abdul Moiz</strong> (S/O Muzmmil Ahmed). Dedicated in eternal honor to <strong>Miss Mahnoor</strong>.
         </p>
       </div>
     </footer>
   </div>
 
+  <!-- ANDROID MODAL WITH UPDATED ENGLISH TEXT AS REQUESTED -->
   <div id="androidPendingModal" class="modal-overlay" style="display:none;" aria-hidden="true">
     <div class="pending-modal-card">
       <div class="modal-gold-laser"></div>
 
       <div class="modal-mascot-box">
-        <span>👨‍💻</span>
+        <span>📱</span>
       </div>
 
       <div class="modal-badge">
-        <span>🚧</span> MOBILE ENGINEERING IN PROGRESS
+        <span>🚧</span> MOBILE ENGINEERING IN HIGH FLIGHT
       </div>
 
-      <h3 class="modal-title">Android APK Coming Soon!</h3>
-
-      <p class="modal-text">
-        Bhai, yeh APK file abhi <strong>Active Development</strong> phase mein hai! <strong>Hafiz Abdul Moiz</strong> is waqt Android mobile aur tablet version ko design aur optimize kar rahe hain taake mobile par bhi touch-screen proctored arena aur high security run ho sake.
+      <h3 class="modal-title">Android Mobile APK Edition</h3>
+      <p style="font-size:0.75rem; color:#10b981; font-weight:700; text-transform:uppercase; margin-bottom:14px;">
+        Under Accelerated Development by Hafiz Abdul Moiz
       </p>
 
+      <div class="modal-text-box">
+        <p style="margin-bottom: 10px; font-weight: 700; color: #ffffff;">
+          Dear Candidate &amp; Student,
+        </p>
+        <p style="margin-bottom: 10px;">
+          The official <strong>Android Mobile Edition</strong> of the Online Exam Portal is actively being engineered, tested, and optimized by Lead Technical Architect <strong>Hafiz Abdul Moiz</strong>.
+        </p>
+        <p style="margin-bottom: 10px; color: #7dd3fc;">
+          ⚡ <strong>Performance Leap:</strong> We are engineering this mobile version with touch-gesture proctoring, ultra-low battery consumption, and lightweight responsiveness—it is designed to potentially be <em>even more fluid, responsive, and seamless than the Windows desktop edition!</em>
+        </p>
+
+        <!-- November 10th Context as Requested -->
+        <div class="modal-highlight-alert">
+          <div style="font-weight: 800; font-size: 0.88rem; margin-bottom: 4px; display:flex; align-items:center; gap:6px;">
+            <span>📅</span> Target Launch: Prior to November 10th
+          </div>
+          <p style="margin: 0; line-height: 1.45;">
+            Insha'Allah, our utmost endeavor and mission is to release the Android edition <strong>before November 10th</strong>. November 10th marks an emotionally profound, bittersweet, and tearful day for students across our institute—the heartbreaking final day and resignation of our beloved mentor, <strong style="color:#ffffff;">Miss Mahnoor (The Best Teacher of All Time)</strong>.
+          </p>
+          <small style="display:block; margin-top:6px; color:#fde68a; font-style:italic;">
+            ❤️ Our ambition is to dedicate this breakthrough mobile release in her honor before that emotional parting day arrives.
+          </small>
+        </div>
+      </div>
+
+      <!-- Live Development Progress Track -->
       <div class="progress-track-box">
         <div class="progress-label-row">
-          <span>Android Mobile Optimization</span>
-          <span>65% Complete</span>
+          <span>Android Mobile Optimization Sprint</span>
+          <span style="color:#10b981; font-family:monospace; font-weight:900;">78% Complete</span>
         </div>
         <div class="progress-bar-wrap">
           <div class="progress-bar-fill"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#94a3b8; margin-top:8px;">
+          <span>Touch Sandbox: Ready</span>
+          <span>AI Cam: In Testing</span>
+          <span>Kiosk Shield: 85%</span>
+        </div>
+      </div>
+
+      <!-- Pre-registration Alert Input -->
+      <div style="margin-bottom: 20px; text-align: left;">
+        <label style="display:block; font-size:0.76rem; font-weight:700; color:#cbd5e1; margin-bottom:6px;">
+          Receive an instant VIP ping when the APK drops:
+        </label>
+        <div style="display: flex; gap: 8px;">
+          <input id="inputApkEmail" type="text" placeholder="Enter Email or WhatsApp (e.g. 0326-XXXXXXX)" style="flex:1; background:rgba(15,23,42,0.9); border:1px solid rgba(148,163,184,0.3); border-radius:10px; padding:10px 14px; font-size:0.8rem; color:#ffffff; outline:none;">
+          <button id="btnNotifyApkRelease" type="button" class="btn-modal-action" style="flex:0 0 auto; padding:10px 16px;">
+            <span>🔔</span> Notify Me
+          </button>
         </div>
       </div>
 
       <div class="modal-actions">
         <button id="btnClosePendingModal" type="button" class="btn-modal-dismiss">
-          Samajh Gaya (Close)
-        </button>
-        <button id="btnNotifyApkRelease" type="button" class="btn-modal-action">
-          <span>🔔</span> Notify Me On Release
+          Understood (Close)
         </button>
       </div>
     </div>

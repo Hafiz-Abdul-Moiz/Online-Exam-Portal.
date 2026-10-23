@@ -447,11 +447,53 @@ May Allah SWT bless you with endless happiness, health, and supreme success. Ame
       });
     }
   }
-
   // ========================================================
+  // SECURITY SHIELD: BLOCK INSPECT, F12, & RIGHT CLICK
+  // ========================================================
+  function injectSecurityShield() {
+    // 1. Right Click Disable Karein
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      showToast("⚠️ Security System: Right Click is Blocked!", "info");
+    });
+
+    // 2. F12 aur baqi core shortcuts ko block karein
+    document.addEventListener('keydown', function(e) {
+      // F12 Key ko block karein
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        showToast("⚠️ Security System: Developer Tools are Blocked!", "info");
+        return false;
+      }
+      
+      // Ctrl + Shift + I (Inspect)
+      // Ctrl + Shift + J (Console)
+      // Ctrl + Shift + C (Element Selector)
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C' || e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
+        e.preventDefault();
+        showToast("⚠️ Security System: Inspect Element is Blocked!", "info");
+        return false;
+      }
+      
+      // Ctrl + U (View Source Code)
+      if (e.ctrlKey && (e.key === 'U' || e.keyCode === 85)) {
+        e.preventDefault();
+        showToast("⚠️ Security System: View Source is Blocked!", "info");
+        return false;
+      }
+
+      // Ctrl + S (Save Page)
+      if (e.ctrlKey && (e.key === 'S' || e.keyCode === 83)) {
+        e.preventDefault();
+        return false;
+      }
+    });
+  }
+   // ========================================================
   // 8. INITIALIZE ON DOM READY
   // ========================================================
   document.addEventListener("DOMContentLoaded", () => {
+    injectSecurityShield();
     initAmbientParticles();
     initAndroidController();
     initDownloadTriggers();
